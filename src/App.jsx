@@ -13,6 +13,8 @@ const STORAGE_KEYS = {
   featuredQuest: "houseCupFeaturedQuestV1",
   featuredNote: "houseCupFeaturedNoteV1",
   monthlyWellnessMonth: "houseCupMonthlyWellnessMonthV1",
+  customRoster: "houseCupCustomRosterV1",
+  photoChallenge: "houseCupPhotoChallengeV1",
 };
 
 const CHIEF_USERS = [
@@ -235,18 +237,18 @@ const QUEST_OPTIONS = [
 ];
 
 const MONTHLY_WELLNESS_QUESTS = [
-  { month: "July", theme: "Housewarming Party", quest: "Motto Motto Medicine — house mottos + meet your interns", vibe: "Identity & Belonging", proof: "House motto/logo photo + photo of something fun with interns, inside or outside the hospital" },
-  { month: "August", theme: "Hydrate or Die-drate", quest: "Beat the Heat Step Stampede — cumulative house steps", vibe: "Movement & Heat Survival", proof: "Step screenshot / wearable screenshot" },
-  { month: "September", theme: "Tiny Teaching, Big Feelings", quest: "Teach Me Something Good — one pearl, chalk talk, article, or mini teaching moment", vibe: "Learning Culture", proof: "Photo/screenshot of teaching, article, whiteboard, or post" },
-  { month: "October", theme: "Boo-cson", quest: "Haunted Tucson Field Trip — visit a haunted or historic Tucson spot", vibe: "Fun & Adventure", proof: "Photo at the spot" },
-  { month: "November", theme: "Thanks, I Needed That", quest: "Gratitude + Service Combo Meal — post one gratitude note and complete one service/community action", vibe: "Giving Back", proof: "Gratitude screenshot + service/donation/volunteering photo or receipt" },
-  { month: "December", theme: "Desert Claus", quest: "Holiday Giving Drive — clothing, food, gifts, or patient/community support", vibe: "Community", proof: "Donation/photo/receipt" },
-  { month: "January", theme: "New Year, Same Pager", quest: "Fresh Start Bingo — try a new wellness activity", vibe: "Fresh Start", proof: "Photo/checklist/calendar screenshot" },
-  { month: "February", theme: "Pal-entines", quest: "Connection Quest — check in on 5 colleagues", vibe: "Social Wellness", proof: "Group photo / message screenshot / note" },
-  { month: "March", theme: "Peak Freaks", quest: "Peak Bagging Month — summit, hike, or high-effort outdoor adventure", vibe: "Adventure", proof: "Summit photos / route screenshots" },
-  { month: "April", theme: "Spoke Signals", quest: "Bike Month — house miles by bike, commute, Loop ride, or spin", vibe: "Active Transport", proof: "Mileage screenshot / bike photo" },
-  { month: "May", theme: "Brain Deserves Snacks", quest: "Mental Health Choose-Your-Own-Adventure", vibe: "Mental Health", proof: "Photo, calendar/checklist, streak screenshot, reflection note, or other non-private proof" },
-  { month: "June", theme: "Sunrise Survival Club", quest: "Summer Heat Challenge — sunrise workouts + early hikes", vibe: "Resilience", proof: "Sunrise photo / workout screenshot" },
+  { month: "July", theme: "Housewarming Party", quest: "Motto Motto Medicine — house mottos + meet your interns", vibe: "Identity & Belonging", proof: "House motto/logo photo + photo of something fun with interns, inside or outside the hospital", photo: "House crest reveal: motto/logo + at least 3 house humans" },
+  { month: "August", theme: "Hydrate or Die-drate", quest: "Beat the Heat Step Stampede — cumulative house steps", vibe: "Movement & Heat Survival", proof: "Step screenshot / wearable screenshot", photo: "Sweatiest wholesome step screenshot or desert-safe walk selfie" },
+  { month: "September", theme: "Tiny Teaching, Big Feelings", quest: "Teach Me Something Good — one pearl, chalk talk, article, or mini teaching moment", vibe: "Learning Culture", proof: "Photo/screenshot of teaching, article, whiteboard, or post", photo: "Best chalk-talk board / teaching pearl glamour shot" },
+  { month: "October", theme: "Boo-cson", quest: "Haunted Tucson Field Trip — visit a haunted or historic Tucson spot", vibe: "Fun & Adventure", proof: "Photo at the spot", photo: "Spookiest Tucson photo that remains HR-safe" },
+  { month: "November", theme: "Thanks, I Needed That", quest: "Gratitude + Service Combo Meal — post one gratitude note and complete one service/community action", vibe: "Giving Back", proof: "Gratitude screenshot + service/donation/volunteering photo or receipt", photo: "Most wholesome gratitude/service proof" },
+  { month: "December", theme: "Desert Claus", quest: "Holiday Giving Drive — clothing, food, gifts, or patient/community support", vibe: "Community", proof: "Donation/photo/receipt", photo: "Most festive giving-drive evidence" },
+  { month: "January", theme: "New Year, Same Pager", quest: "Fresh Start Bingo — try a new wellness activity", vibe: "Fresh Start", proof: "Photo/checklist/calendar screenshot", photo: "New year, new coping mechanism" },
+  { month: "February", theme: "Pal-entines", quest: "Connection Quest — check in on 5 colleagues", vibe: "Social Wellness", proof: "Group photo / message screenshot / note", photo: "Best colleague connection selfie or screenshot" },
+  { month: "March", theme: "Peak Freaks", quest: "Peak Bagging Month — summit, hike, or high-effort outdoor adventure", vibe: "Adventure", proof: "Summit photos / route screenshots", photo: "Summit goblin glamour shot" },
+  { month: "April", theme: "Spoke Signals", quest: "Bike Month — house miles by bike, commute, Loop ride, or spin", vibe: "Active Transport", proof: "Mileage screenshot / bike photo", photo: "Best bike/Loop/spin proof" },
+  { month: "May", theme: "Brain Deserves Snacks", quest: "Mental Health Choose-Your-Own-Adventure", vibe: "Mental Health", proof: "Photo, calendar/checklist, streak screenshot, reflection note, or other non-private proof", photo: "Most peaceful non-PHI reset photo" },
+  { month: "June", theme: "Sunrise Survival Club", quest: "Summer Heat Challenge — sunrise workouts + early hikes", vibe: "Resilience", proof: "Sunrise photo / workout screenshot", photo: "Best sunrise survival shot" },
 ];
 
 function getStoredValue(key, fallback) {
@@ -270,6 +272,17 @@ function getStoredRows() {
   }
 }
 
+function getStoredCustomRoster() {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return [];
+    const raw = window.localStorage.getItem(STORAGE_KEYS.customRoster);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
 function setStoredValue(key, value) {
   try {
     if (typeof window !== "undefined" && window.localStorage) window.localStorage.setItem(key, value);
@@ -282,14 +295,37 @@ function setStoredRows(rows) {
   } catch (_) {}
 }
 
+function setStoredCustomRoster(roster) {
+  try {
+    if (typeof window !== "undefined" && window.localStorage) window.localStorage.setItem(STORAGE_KEYS.customRoster, JSON.stringify(Array.isArray(roster) ? roster : []));
+  } catch (_) {}
+}
+
 function normalizeName(value) {
   return String(value === null || value === undefined ? "" : value).trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function findRosterPerson(name) {
+function dedupeRoster(roster) {
+  const seen = new Set();
+  const result = [];
+  (Array.isArray(roster) ? roster : []).forEach((person) => {
+    if (!person || !person.name) return;
+    const key = normalizeName(person.name);
+    if (seen.has(key)) return;
+    seen.add(key);
+    result.push(person);
+  });
+  return result;
+}
+
+function findRosterPersonInList(name, roster) {
   const normalized = normalizeName(name);
   if (!normalized) return null;
-  return ROSTER.find((person) => normalizeName(person.name) === normalized) || null;
+  return (Array.isArray(roster) ? roster : []).find((person) => normalizeName(person.name) === normalized) || null;
+}
+
+function findRosterPerson(name) {
+  return findRosterPersonInList(name, ROSTER);
 }
 
 function authenticateChief(name, password) {
@@ -476,6 +512,53 @@ async function submitRowsToAppsScript(rows) {
   return { ok: true, count: safeRows.length };
 }
 
+async function postAdminAction(action, payload) {
+  return submitToAppsScript({
+    timestamp: new Date().toISOString(),
+    date: todayString(),
+    source: "chief_admin",
+    adminAction: action,
+    payload: payload || {},
+    status: "approved",
+    submissionId: makeSubmissionId(),
+  }, null);
+}
+
+function readBackendJsonp(params) {
+  return new Promise((resolve, reject) => {
+    const callbackName = "houseCupJsonp_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+    const script = document.createElement("script");
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("Backend request timed out."));
+    }, 15000);
+
+    function cleanup() {
+      window.clearTimeout(timeout);
+      if (script.parentNode) script.parentNode.removeChild(script);
+      try { delete window[callbackName]; } catch (_) { window[callbackName] = undefined; }
+    }
+
+    window[callbackName] = (data) => {
+      cleanup();
+      if (!data || data.ok !== true) {
+        reject(new Error("Backend endpoint returned an error."));
+        return;
+      }
+      resolve(data);
+    };
+
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("Could not load Apps Script backend."));
+    };
+
+    const query = new URLSearchParams({ ...(params || {}), callback: callbackName, cacheBust: String(Date.now()) });
+    script.src = APPS_SCRIPT_WEB_APP_URL + "?" + query.toString();
+    document.body.appendChild(script);
+  });
+}
+
 function readSubmissionsJsonp() {
   return new Promise((resolve, reject) => {
     const callbackName = "houseCupJsonp_" + Date.now() + "_" + Math.random().toString(36).slice(2);
@@ -493,6 +576,7 @@ function readSubmissionsJsonp() {
 
     window[callbackName] = (data) => {
       cleanup();
+      console.log("House Cup Sheet sync payload", data);
       if (!data || data.ok !== true || !Array.isArray(data.submissions)) {
         reject(new Error("Sheet endpoint did not return submissions."));
         return;
@@ -534,6 +618,26 @@ async function readSubmissionsFromAppsScript() {
     reviewNote: row.reviewNote || "",
     submissionId: row.submissionId || "sheet-" + index + "-" + Date.now(),
   }));
+}
+
+async function readTeamFromAppsScript() {
+  const data = await readBackendJsonp({ action: "team" });
+  const team = Array.isArray(data.team) ? data.team : [];
+  return team.map((person) => ({
+    name: person.name || "",
+    house: person.house || "",
+    role: person.role || "Resident",
+  })).filter((person) => person.name && person.house);
+}
+
+async function readSettingsFromAppsScript() {
+  const data = await readBackendJsonp({ action: "settings" });
+  return data.settings || {};
+}
+
+async function readQuestIdeasFromAppsScript() {
+  const data = await readBackendJsonp({ action: "quests" });
+  return Array.isArray(data.quests) ? data.quests : [];
 }
 
 function getLeaderboardRankLabel(index) {
@@ -686,11 +790,13 @@ export default function HouseCupPointLogger() {
   const [currentFeaturedQuest, setCurrentFeaturedQuest] = useState(() => getStoredValue(STORAGE_KEYS.featuredQuest, FEATURED_QUEST_IDEAS[0]));
   const [currentFeaturedNote, setCurrentFeaturedNote] = useState(() => getStoredValue(STORAGE_KEYS.featuredNote, "Photo evidence encouraged. Keep it easy, funny, and wholesome."));
   const [currentMonthlyWellnessMonth, setCurrentMonthlyWellnessMonth] = useState(() => getStoredValue(STORAGE_KEYS.monthlyWellnessMonth, getCurrentMonthlyWellnessQuest().month));
+  const [currentPhotoChallenge, setCurrentPhotoChallenge] = useState(() => getStoredValue(STORAGE_KEYS.photoChallenge, getCurrentMonthlyWellnessQuest().photo));
   const [featuredSuggestion, setFeaturedSuggestion] = useState(() => getStoredValue(STORAGE_KEYS.featuredQuest, FEATURED_QUEST_IDEAS[0]));
   const [pointPitchAmount, setPointPitchAmount] = useState(1);
   const [rows, setRows] = useState(() => getStoredRows());
   const [lastSaved, setLastSaved] = useState(null);
-  const [sheetStatus, setSheetStatus] = useState("Local backup loaded. Sync Sheet for shared leaderboard.");
+  const [sheetStatus, setSheetStatus] = useState("Loading shared leaderboard from Google Sheet...");
+  const [settingsStatus, setSettingsStatus] = useState("Loading chief settings/team sheet...");
 
   const [chiefName, setChiefName] = useState("");
   const [chiefPassword, setChiefPassword] = useState("");
@@ -711,8 +817,18 @@ export default function HouseCupPointLogger() {
   const [approvalMessage, setApprovalMessage] = useState("");
   const [approvalPoints, setApprovalPoints] = useState(1);
   const [approvalNote, setApprovalNote] = useState("");
+  const [remoteRoster, setRemoteRoster] = useState([]);
+  const [customRoster, setCustomRoster] = useState(() => getStoredCustomRoster());
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberHouse, setNewMemberHouse] = useState("");
+  const [newMemberRole, setNewMemberRole] = useState("Resident");
+  const [newMemberMessage, setNewMemberMessage] = useState("");
+  const [newQuestText, setNewQuestText] = useState("");
+  const [newQuestNote, setNewQuestNote] = useState("");
+  const [newPhotoChallengeText, setNewPhotoChallengeText] = useState("");
 
-  const rosterMatch = findRosterPerson(name);
+  const fullRoster = useMemo(() => dedupeRoster(remoteRoster.concat(ROSTER).concat(customRoster)), [remoteRoster, customRoster]);
+  const rosterMatch = findRosterPersonInList(name, fullRoster);
   const effectiveHouse = rosterMatch && rosterMatch.house ? rosterMatch.house : house;
   const canSubmit = Boolean(name.trim() && effectiveHouse);
   const totals = useMemo(() => calculateHouseTotals(rows), [rows]);
@@ -722,9 +838,23 @@ export default function HouseCupPointLogger() {
   const recentSubmissions = getRecentSubmissions(rows);
 
   useEffect(() => { setStoredRows(rows); }, [rows]);
+
+  useEffect(() => {
+    syncSheet({ silent: true, keepLocalIfEmpty: true });
+    syncBackendConfig({ silent: true });
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "leaderboard" || activeTab === "data") {
+      syncSheet({ silent: true, keepLocalIfEmpty: true });
+    }
+  }, [activeTab]);
+
   useEffect(() => { setStoredValue(STORAGE_KEYS.featuredQuest, currentFeaturedQuest); }, [currentFeaturedQuest]);
   useEffect(() => { setStoredValue(STORAGE_KEYS.featuredNote, currentFeaturedNote); }, [currentFeaturedNote]);
   useEffect(() => { setStoredValue(STORAGE_KEYS.monthlyWellnessMonth, currentMonthlyWellnessMonth); }, [currentMonthlyWellnessMonth]);
+  useEffect(() => { setStoredValue(STORAGE_KEYS.photoChallenge, currentPhotoChallenge); }, [currentPhotoChallenge]);
+  useEffect(() => { setStoredCustomRoster(customRoster); }, [customRoster]);
 
   function handlePhotoChange(event) {
     const file = event.target.files && event.target.files[0];
@@ -741,22 +871,125 @@ export default function HouseCupPointLogger() {
     }
     if (option.questType === "monthly_wellness") {
       const monthQuest = getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth);
-      return { ...option, label: monthQuest.month + " Monthly Wellness Challenge — " + monthQuest.quest, points: 5, monthlyTheme: monthQuest.theme, monthlyVibe: monthQuest.vibe, proof: monthQuest.proof };
+      return { ...option, label: monthQuest.month + " Monthly Wellness Challenge — " + monthQuest.quest, points: 5, monthlyTheme: monthQuest.theme, monthlyVibe: monthQuest.vibe, proof: monthQuest.proof, photo: currentPhotoChallenge };
     }
     return option;
   }
 
-  async function syncSheet() {
+  async function addCustomFeaturedQuest() {
+    const cleanQuest = newQuestText.trim();
+    if (!cleanQuest) return;
+    const cleanNote = newQuestNote.trim();
+    setCurrentFeaturedQuest(cleanQuest);
+    setFeaturedSuggestion(cleanQuest);
+    if (cleanNote) setCurrentFeaturedNote(cleanNote);
+    setNewQuestText("");
+    setNewQuestNote("");
     try {
-      setSheetStatus("Syncing Sheet...");
-      const sheetRows = await readSubmissionsFromAppsScript();
-      setRows(sheetRows);
-      setLastSaved(sheetRows[0] || null);
-      setSheetStatus("Synced " + sheetRows.length + " Sheet row(s). Shared leaderboard loaded.");
+      await postAdminAction("addQuest", { quest: cleanQuest, note: cleanNote, points: 5, category: "Featured Quest", updatedBy: currentChief || chiefName || "chief" });
+      await saveChiefSettingsToSheet({ currentFeaturedQuest: cleanQuest, currentFeaturedNote: cleanNote || currentFeaturedNote });
+      setSettingsStatus("New quest saved to Google Sheet.");
     } catch (error) {
-      setSheetStatus("Could not sync Sheet. Confirm Apps Script doGet supports JSONP callback and deployment access is Anyone.");
+      setSettingsStatus("Quest saved locally, but Google Sheet save failed.");
       console.error(error);
     }
+  }
+
+  async function addCustomRosterMember() {
+    const cleanName = newMemberName.trim();
+    if (!cleanName || !newMemberHouse) {
+      setNewMemberMessage("Add a name and house first.");
+      return;
+    }
+    const exists = findRosterPersonInList(cleanName, fullRoster);
+    if (exists) {
+      setNewMemberMessage(cleanName + " is already listed in " + exists.house + ".");
+      return;
+    }
+    const person = { name: cleanName, house: newMemberHouse, role: newMemberRole || "Resident" };
+    setCustomRoster((previous) => previous.concat(person));
+    setNewMemberName("");
+    setNewMemberHouse("");
+    setNewMemberRole("Resident");
+    setNewMemberMessage("Adding " + cleanName + " to the Team sheet...");
+    try {
+      await postAdminAction("addTeamMember", { member: person, updatedBy: currentChief || chiefName || "chief" });
+      await syncBackendConfig({ silent: true });
+      setNewMemberMessage("Added " + cleanName + " to the Team sheet.");
+    } catch (error) {
+      setNewMemberMessage("Added locally, but Team sheet save failed.");
+      console.error(error);
+    }
+  }
+
+  function removeCustomRosterMember(nameToRemove) {
+    setCustomRoster((previous) => previous.filter((person) => person.name !== nameToRemove));
+  }
+
+  function useMonthlyPhotoChallenge() {
+    setCurrentPhotoChallenge(getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth).photo);
+    setNewPhotoChallengeText("");
+  }
+
+  async function syncSheet(options) {
+    const opts = options || {};
+    try {
+      if (!opts.silent) setSheetStatus("Syncing Google Sheet leaderboard...");
+      const sheetRows = await readSubmissionsFromAppsScript();
+
+      if (!Array.isArray(sheetRows)) {
+        setSheetStatus("Sheet response was not readable. Using local backup.");
+        return false;
+      }
+
+      if (sheetRows.length === 0 && opts.keepLocalIfEmpty) {
+        setSheetStatus("Google Sheet has 0 rows. Using local backup until Sheet has submissions.");
+        return false;
+      }
+
+      setRows(sheetRows);
+      setLastSaved(sheetRows[0] || null);
+      setSheetStatus("Live from Google Sheet · " + sheetRows.length + " submission row(s).");
+      return true;
+    } catch (error) {
+      setSheetStatus("Could not read Google Sheet. Using local backup.");
+      console.error(error);
+      return false;
+    }
+  }
+
+  async function syncBackendConfig(options) {
+    const opts = options || {};
+    try {
+      if (!opts.silent) setSettingsStatus("Syncing team/settings sheets...");
+      const [team, settings] = await Promise.all([
+        readTeamFromAppsScript(),
+        readSettingsFromAppsScript(),
+      ]);
+      if (Array.isArray(team) && team.length > 0) setRemoteRoster(team);
+      if (settings.currentFeaturedQuest) setCurrentFeaturedQuest(settings.currentFeaturedQuest);
+      if (settings.currentFeaturedNote) setCurrentFeaturedNote(settings.currentFeaturedNote);
+      if (settings.currentMonthlyWellnessMonth) setCurrentMonthlyWellnessMonth(settings.currentMonthlyWellnessMonth);
+      if (settings.currentPhotoChallenge) setCurrentPhotoChallenge(settings.currentPhotoChallenge);
+      setSettingsStatus("Team/settings live from Google Sheet.");
+      return true;
+    } catch (error) {
+      setSettingsStatus("Using built-in/local team/settings backup.");
+      console.error(error);
+      return false;
+    }
+  }
+
+  async function saveChiefSettingsToSheet(settingsOverride) {
+    const settings = {
+      currentFeaturedQuest,
+      currentFeaturedNote,
+      currentMonthlyWellnessMonth,
+      currentPhotoChallenge,
+      ...(settingsOverride || {}),
+    };
+    await postAdminAction("saveSettings", { settings, updatedBy: currentChief || chiefName || "chief" });
+    setSettingsStatus("Chief settings saved to Google Sheet.");
   }
 
   async function logActivity(activity) {
@@ -827,6 +1060,7 @@ export default function HouseCupPointLogger() {
     try {
       await submitToAppsScript(row, photoFile);
       setSubmitStatus("Submitted.");
+      window.setTimeout(() => syncSheet({ silent: true, keepLocalIfEmpty: true }), 1200);
     } catch (error) {
       console.error(error);
       setSubmitStatus("Saved locally, but Google upload failed. Export CSV as backup.");
@@ -849,7 +1083,7 @@ export default function HouseCupPointLogger() {
     setAttendanceText("");
     const unknownCount = imported.filter((row) => row.house === "Unknown").length;
     setUploadMessage("Imported " + imported.length + " attendance entries" + (unknownCount ? " - " + unknownCount + " need roster/house cleanup" : "") + ".");
-    try { await submitRowsToAppsScript(imported); setUploadMessage("Imported and submitted " + imported.length + " attendance entries" + (unknownCount ? " - " + unknownCount + " need roster/house cleanup" : "") + "."); } catch (error) { setUploadMessage("Imported locally, but Google upload failed. Export CSV as backup."); }
+    try { await submitRowsToAppsScript(imported); setUploadMessage("Imported and submitted " + imported.length + " attendance entries" + (unknownCount ? " - " + unknownCount + " need roster/house cleanup" : "") + "."); window.setTimeout(() => syncSheet({ silent: true, keepLocalIfEmpty: true }), 1200); } catch (error) { setUploadMessage("Imported locally, but Google upload failed. Export CSV as backup."); }
   }
 
   async function addChiefBonus() {
@@ -858,7 +1092,7 @@ export default function HouseCupPointLogger() {
     setRows((previousRows) => [row].concat(previousRows));
     setBonusNote("");
     setBonusMessage("Added " + row.points + " bonus point(s) to " + row.house + ".");
-    try { await submitToAppsScript(row, null); setBonusMessage("Added and submitted " + row.points + " bonus point(s) to " + row.house + "."); } catch (error) { setBonusMessage("Added locally, but Google upload failed. Export CSV as backup."); }
+    try { await submitToAppsScript(row, null); setBonusMessage("Added and submitted " + row.points + " bonus point(s) to " + row.house + "."); window.setTimeout(() => syncSheet({ silent: true, keepLocalIfEmpty: true }), 1200); } catch (error) { setBonusMessage("Added locally, but Google upload failed. Export CSV as backup."); }
   }
 
   function reviewPointPitch(submission, index, decision) {
@@ -935,7 +1169,7 @@ export default function HouseCupPointLogger() {
                 <div>
                   <FieldLabel>Resident/Faculty/Staff name</FieldLabel>
                   <TextInput list="names" value={name} onChange={(event) => setName(event.target.value)} placeholder="Start typing..." />
-                  <datalist id="names">{ROSTER.map((person) => <option key={person.name} value={person.name} />)}</datalist>
+                  <datalist id="names">{fullRoster.map((person) => <option key={person.name} value={person.name} />)}</datalist>
                 </div>
                 <div>
                   <FieldLabel>House</FieldLabel>
@@ -955,6 +1189,7 @@ export default function HouseCupPointLogger() {
               </div>
               <div className="hc-quest-card">Current Featured Quest: {currentFeaturedQuest} (+5)</div>
               <div className="hc-quest-card">Monthly Wellness: {getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth).month} — {getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth).quest} (+5). Proof: {getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth).proof}</div>
+              <div className="hc-quest-card">Photo Challenge: {currentPhotoChallenge}</div>
               <div className="hc-muted" style={{ marginTop: 10 }}>Use this dropdown for Featured Quest, Monthly Wellness Challenge, or Big Tucson/custom challenges. Otherwise mash respective button below.</div>
             </div>
 
@@ -977,11 +1212,11 @@ export default function HouseCupPointLogger() {
 
         {activeTab === "leaderboard" && (
           <section>
-            <div className="hc-row" style={{ marginTop: 18 }}><button className="hc-button" type="button" onClick={syncSheet}>Sync Sheet</button><span className="hc-muted">{sheetStatus}</span></div>
+            <div className="hc-row" style={{ marginTop: 18 }}><button className="hc-button" type="button" onClick={() => syncSheet({ keepLocalIfEmpty: true })}>Refresh Google Sheet</button><span className="hc-muted">{sheetStatus}</span></div>
             <div className="hc-grid hc-grid-5" style={{ marginTop: 18 }}>{totals.map((total, index) => <div key={total.house} className="hc-leader"><div className="hc-rank">{getLeaderboardRankLabel(index)}</div><div className="hc-house">{total.house}</div><div className="hc-score">{total.points}</div><div className="hc-muted">points</div><div className="hc-trash">{getLeaderboardTrashTalk(index)}</div></div>)}</div>
             <div className="hc-card"><h3>Achievement Badges</h3>{achievementBadges.length === 0 && <div className="hc-alert">No badges yet. Be the first to do literally anything.</div>}<div className="hc-badge-wall">{achievementBadges.map((badge) => <div key={badge.label} className="hc-achievement">{badge.label}<small>{badge.detail}</small></div>)}</div></div>
             <div className="hc-card"><h3>Mini Wall of Fame</h3>{recentSubmissions.length === 0 && <div className="hc-alert">No submissions yet. The wall is tragically blank.</div>}<div className="hc-feed">{recentSubmissions.map((item, index) => <div key={index} className="hc-feed-item">{item.emoji} {item.text}</div>)}</div></div>
-            <div className="hc-card"><h3>Monthly Wellness Quests</h3><div className="hc-months">{MONTHLY_WELLNESS_QUESTS.map((month) => <div key={month.month} className="hc-month"><b>{month.month}: {month.theme}</b><br />{month.quest}<br /><span className="hc-muted">{month.vibe}<br />Proof: {month.proof}</span></div>)}</div></div>
+            <div className="hc-card"><h3>Monthly Wellness Quests</h3><div className="hc-months">{MONTHLY_WELLNESS_QUESTS.map((month) => <div key={month.month} className="hc-month"><b>{month.month}: {month.theme}</b><br />{month.quest}<br /><span className="hc-muted">{month.vibe}<br />Proof: {month.proof}<br />Photo: {month.photo}</span></div>)}</div></div>
           </section>
         )}
 
@@ -992,7 +1227,7 @@ export default function HouseCupPointLogger() {
         {activeTab === "chief" && chiefAuthed && (
           <section className="hc-card"><div className="hc-row" style={{ justifyContent: "space-between" }}><div><h2>Secret Chief Lair</h2><p className="hc-muted">Logged in as <b>{currentChief}</b> ({getChiefHouse(currentChief)}). AHD/conference upload = 1 point/hour by default. Kahoot/trivia/custom bonuses are manually awarded here.</p></div><button type="button" className="hc-button secondary" onClick={() => { setChiefAuthed(false); setCurrentChief(""); setActiveTab("chiefLogin"); }}>Log out</button></div>
             <div className="hc-card" style={{ boxShadow: "none" }}><h3>Google Docs / Drive settings</h3><p className="hc-muted">Admin/contact: <b>{ADMIN_EMAIL}</b>. Submissions sheet: <a href={GOOGLE_SUBMISSIONS_SHEET_URL} target="_blank" rel="noreferrer">open Google Sheet</a>. Evidence folder: <a href={GOOGLE_EVIDENCE_FOLDER_URL} target="_blank" rel="noreferrer">open Google Drive folder</a>. Apps Script endpoint: <a href={APPS_SCRIPT_WEB_APP_URL} target="_blank" rel="noreferrer">open backend</a>.</p><div className="hc-row" style={{ marginTop: 10 }}><button type="button" className="hc-button secondary" onClick={testBackendConnection}>Send backend test row</button><button type="button" onClick={clearRows} disabled={!rows.length} className="hc-button danger">Clear local browser data</button></div><p className="hc-muted">Clearing local data only resets this browser. It does not delete the Google Sheet.</p></div>
-            <div className="hc-card" style={{ boxShadow: "none" }}><h3>Featured Quest / Monthly Wellness controls</h3><p className="hc-muted">This updates this browser and is saved locally. To make it global across everyone, store settings in the Sheet backend later.</p><div className="hc-grid hc-grid-4"><div><FieldLabel>Featured quest idea bank</FieldLabel><SelectInput value={featuredSuggestion} onChange={(event) => { setFeaturedSuggestion(event.target.value); setCurrentFeaturedQuest(event.target.value); }}>{FEATURED_QUEST_IDEAS.map((idea) => <option key={idea} value={idea}>{idea}</option>)}</SelectInput><button type="button" className="hc-button secondary" style={{ marginTop: 8 }} onClick={() => { const idea = getRandomFeaturedQuestIdea(); setFeaturedSuggestion(idea); setCurrentFeaturedQuest(idea); }}>🎲 Random sweet quest</button></div><div><FieldLabel>Current featured quest</FieldLabel><TextInput value={currentFeaturedQuest} onChange={(event) => setCurrentFeaturedQuest(event.target.value)} /></div><div><FieldLabel>Featured quest note</FieldLabel><TextInput value={currentFeaturedNote} onChange={(event) => setCurrentFeaturedNote(event.target.value)} /></div><div><FieldLabel>Monthly wellness challenge</FieldLabel><SelectInput value={currentMonthlyWellnessMonth} onChange={(event) => setCurrentMonthlyWellnessMonth(event.target.value)}>{MONTHLY_WELLNESS_QUESTS.map((month) => <option key={month.month} value={month.month}>{month.month}: {month.theme}</option>)}</SelectInput></div></div><div className="hc-quest-card">Resident view now shows: Featured Quest — {currentFeaturedQuest} (+5)</div><div className="hc-quest-card">Monthly Wellness: {getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth).month} — {getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth).quest}</div></div>
+            <div className="hc-card" style={{ boxShadow: "none" }}><h3>Featured Quest / Monthly Wellness controls</h3><p className="hc-muted">Chief changes below save to the Google Sheet backend when connected. Local browser storage remains a fallback.</p><div className="hc-grid hc-grid-4"><div><FieldLabel>Featured quest idea bank</FieldLabel><SelectInput value={featuredSuggestion} onChange={(event) => { setFeaturedSuggestion(event.target.value); setCurrentFeaturedQuest(event.target.value); }}>{FEATURED_QUEST_IDEAS.map((idea) => <option key={idea} value={idea}>{idea}</option>)}</SelectInput><button type="button" className="hc-button secondary" style={{ marginTop: 8 }} onClick={async () => { const idea = getRandomFeaturedQuestIdea(); setFeaturedSuggestion(idea); setCurrentFeaturedQuest(idea); try { await saveChiefSettingsToSheet({ currentFeaturedQuest: idea }); } catch (error) { console.error(error); } }}>🎲 Random sweet quest</button></div><div><FieldLabel>Current featured quest</FieldLabel><TextInput value={currentFeaturedQuest} onChange={(event) => setCurrentFeaturedQuest(event.target.value)} /></div><div><FieldLabel>Featured quest note</FieldLabel><TextInput value={currentFeaturedNote} onChange={(event) => setCurrentFeaturedNote(event.target.value)} /></div><div><FieldLabel>Monthly wellness challenge</FieldLabel><SelectInput value={currentMonthlyWellnessMonth} onChange={async (event) => { const month = event.target.value; const photo = getCurrentMonthlyWellnessQuest(month).photo; setCurrentMonthlyWellnessMonth(month); setCurrentPhotoChallenge(photo); try { await saveChiefSettingsToSheet({ currentMonthlyWellnessMonth: month, currentPhotoChallenge: photo }); } catch (error) { console.error(error); } }}>{MONTHLY_WELLNESS_QUESTS.map((month) => <option key={month.month} value={month.month}>{month.month}: {month.theme}</option>)}</SelectInput></div></div><div className="hc-quest-card">Resident view now shows: Featured Quest — {currentFeaturedQuest} (+5)</div><div className="hc-quest-card">Monthly Wellness: {getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth).month} — {getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth).quest}</div><div className="hc-quest-card">Photo Challenge of the Month: {currentPhotoChallenge}</div><div className="hc-grid hc-grid-4" style={{ marginTop: 14 }}><div style={{ gridColumn: "span 2" }}><FieldLabel>Add new featured quest</FieldLabel><TextInput value={newQuestText} onChange={(event) => setNewQuestText(event.target.value)} placeholder="Example: Best monsoon sky walk" /></div><div><FieldLabel>Quest note</FieldLabel><TextInput value={newQuestNote} onChange={(event) => setNewQuestNote(event.target.value)} placeholder="Optional proof/vibe" /></div><div style={{ alignSelf: "end" }}><button type="button" className="hc-button" onClick={addCustomFeaturedQuest}>Add quest</button></div></div><div className="hc-grid hc-grid-4" style={{ marginTop: 14 }}><div style={{ gridColumn: "span 2" }}><FieldLabel>Photo challenge of the month</FieldLabel><TextInput value={newPhotoChallengeText} onChange={(event) => setNewPhotoChallengeText(event.target.value)} placeholder="Example: Best cactus + coffee evidence" /></div><div style={{ alignSelf: "end" }}><button type="button" className="hc-button" onClick={async () => { if (newPhotoChallengeText.trim()) { const challenge = newPhotoChallengeText.trim(); setCurrentPhotoChallenge(challenge); setNewPhotoChallengeText(""); try { await saveChiefSettingsToSheet({ currentPhotoChallenge: challenge }); } catch (error) { console.error(error); } } }}>Set photo challenge</button></div><div style={{ alignSelf: "end" }}><button type="button" className="hc-button secondary" onClick={async () => { useMonthlyPhotoChallenge(); try { await saveChiefSettingsToSheet({ currentPhotoChallenge: getCurrentMonthlyWellnessQuest(currentMonthlyWellnessMonth).photo }); } catch (error) { console.error(error); } }}>Use monthly default</button></div></div></div><div className="hc-card" style={{ boxShadow: "none" }}><h3>Add temporary team member</h3><p className="hc-muted">Adds someone to the Team sheet so future chief classes can manage roster changes without code edits. Local browser storage is a fallback.</p><div className="hc-grid hc-grid-4"><div><FieldLabel>Name</FieldLabel><TextInput value={newMemberName} onChange={(event) => setNewMemberName(event.target.value)} placeholder="New Person" /></div><div><FieldLabel>House</FieldLabel><SelectInput value={newMemberHouse} onChange={(event) => setNewMemberHouse(event.target.value)}><option value="">Choose house</option>{HOUSES.map((h) => <option key={h} value={h}>{h}</option>)}</SelectInput></div><div><FieldLabel>Role</FieldLabel><TextInput value={newMemberRole} onChange={(event) => setNewMemberRole(event.target.value)} placeholder="Resident / Faculty / Staff" /></div><div style={{ alignSelf: "end" }}><button type="button" className="hc-button" onClick={addCustomRosterMember}>Add person</button></div></div>{newMemberMessage && <div className="hc-success">{newMemberMessage}</div>}{customRoster.length > 0 && <div className="hc-table-wrap" style={{ marginTop: 12 }}><table className="hc-table"><thead><tr><th>Name</th><th>House</th><th>Role</th><th>Remove</th></tr></thead><tbody>{customRoster.map((person) => <tr key={person.name}><td>{person.name}</td><td>{person.house}</td><td>{person.role}</td><td><button type="button" className="hc-button danger" onClick={() => removeCustomRosterMember(person.name)}>Remove</button></td></tr>)}</tbody></table></div>}</div>
             <div className="hc-grid hc-grid-4" style={{ marginTop: 18 }}><div><FieldLabel>AHD event title</FieldLabel><TextInput value={attendanceTitle} onChange={(event) => setAttendanceTitle(event.target.value)} /></div><div><FieldLabel>Date</FieldLabel><TextInput type="date" value={attendanceDate} onChange={(event) => setAttendanceDate(event.target.value)} /></div><div><FieldLabel>Points/hour</FieldLabel><TextInput type="number" min="1" value={attendancePoints} onChange={(event) => setAttendancePoints(event.target.value)} /></div><div style={{ alignSelf: "end" }}><button type="button" className="hc-button" onClick={importAttendance}>Upload AHD</button></div></div>
             <div style={{ marginTop: 12 }}><FieldLabel>AHD/conference attendees</FieldLabel><textarea className="hc-input" style={{ minHeight: 110 }} value={attendanceText} onChange={(event) => setAttendanceText(event.target.value)} placeholder={"Paste names here:\nNate Walton\nResident Example\nFaculty Example"} /></div>{uploadMessage && <div className="hc-success">{uploadMessage}</div>}{unknownUploads.length > 0 && <div className="hc-alert">{unknownUploads.length} uploaded attendee(s) did not match roster.</div>}
             <hr style={{ margin: "24px 0", border: "none", borderTop: "3px dashed #111827" }} />
@@ -1004,7 +1239,7 @@ export default function HouseCupPointLogger() {
         )}
 
         {activeTab === "data" && (
-          <section className="hc-card"><div className="hc-row"><button type="button" onClick={syncSheet} className="hc-button">🔄 Sync Sheet</button><button type="button" onClick={() => downloadCSV(rows)} disabled={!rows.length} className="hc-button">⬇️ Download CSV</button></div><div className="hc-alert">{sheetStatus}</div><h3>Submission log</h3><div className="hc-table-wrap" style={{ marginTop: 14 }}><table className="hc-table"><thead><tr><th>When</th><th>Date</th><th>Name</th><th>House</th><th>Activity</th><th>Pts</th><th>Status</th><th>Photo</th><th>Source</th></tr></thead><tbody>{rows.map((row, index) => <tr key={row.submissionId || row.timestamp + "-" + index}><td>{row.timestamp ? new Date(row.timestamp).toLocaleString() : ""}</td><td>{row.date}</td><td>{row.name}</td><td>{row.house}</td><td>{row.activity}</td><td><b>{row.points}</b></td><td>{row.status || "approved"}</td><td>{row.photoUrl ? <a href={row.photoUrl} target="_blank" rel="noreferrer">photo</a> : ""}</td><td>{row.source}</td></tr>)}{!rows.length && <tr><td colSpan="9" style={{ textAlign: "center", color: "#64748b" }}>No points logged yet.</td></tr>}</tbody></table></div><h3 style={{ marginTop: 22 }}>Roster reference</h3><p className="hc-muted">Use this to check house assignments when logging attendance or adding new folks to the external roster sheet.</p><div className="hc-table-wrap" style={{ marginTop: 14 }}><table className="hc-table"><thead><tr><th>Name</th><th>House</th><th>Role</th></tr></thead><tbody>{ROSTER.slice().sort((a, b) => a.house.localeCompare(b.house) || a.role.localeCompare(b.role) || a.name.localeCompare(b.name)).map((person) => <tr key={person.name}><td>{person.name}</td><td>{person.house}</td><td>{person.role}</td></tr>)}</tbody></table></div></section>
+          <section className="hc-card"><div className="hc-row"><button type="button" onClick={() => syncSheet({ keepLocalIfEmpty: true })} className="hc-button">🔄 Refresh Google Sheet</button><button type="button" onClick={() => downloadCSV(rows)} disabled={!rows.length} className="hc-button">⬇️ Download CSV</button></div><div className="hc-alert">{sheetStatus}</div><h3>Submission log</h3><div className="hc-table-wrap" style={{ marginTop: 14 }}><table className="hc-table"><thead><tr><th>When</th><th>Date</th><th>Name</th><th>House</th><th>Activity</th><th>Pts</th><th>Status</th><th>Photo</th><th>Source</th></tr></thead><tbody>{rows.map((row, index) => <tr key={row.submissionId || row.timestamp + "-" + index}><td>{row.timestamp ? new Date(row.timestamp).toLocaleString() : ""}</td><td>{row.date}</td><td>{row.name}</td><td>{row.house}</td><td>{row.activity}</td><td><b>{row.points}</b></td><td>{row.status || "approved"}</td><td>{row.photoUrl ? <a href={row.photoUrl} target="_blank" rel="noreferrer">photo</a> : ""}</td><td>{row.source}</td></tr>)}{!rows.length && <tr><td colSpan="9" style={{ textAlign: "center", color: "#64748b" }}>No points logged yet.</td></tr>}</tbody></table></div><h3 style={{ marginTop: 22 }}>Roster reference</h3><p className="hc-muted">Use this to check house assignments when logging attendance or adding new folks to the external roster sheet.</p><div className="hc-table-wrap" style={{ marginTop: 14 }}><table className="hc-table"><thead><tr><th>Name</th><th>House</th><th>Role</th></tr></thead><tbody>{fullRoster.slice().sort((a, b) => a.house.localeCompare(b.house) || a.role.localeCompare(b.role) || a.name.localeCompare(b.name)).map((person) => <tr key={person.name}><td>{person.name}</td><td>{person.house}</td><td>{person.role}</td></tr>)}</tbody></table></div></section>
         )}
       </div>
       <Analytics />
