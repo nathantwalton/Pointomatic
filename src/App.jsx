@@ -476,14 +476,43 @@ async function submitRowsToAppsScript(rows) {
   return { ok: true, count: safeRows.length };
 }
 
+function readSubmissionsJsonp() {
+  return new Promise((resolve, reject) => {
+    const callbackName = "houseCupJsonp_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+    const script = document.createElement("script");
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("Sheet sync timed out."));
+    }, 15000);
+
+    function cleanup() {
+      window.clearTimeout(timeout);
+      if (script.parentNode) script.parentNode.removeChild(script);
+      try { delete window[callbackName]; } catch (_) { window[callbackName] = undefined; }
+    }
+
+    window[callbackName] = (data) => {
+      cleanup();
+      if (!data || data.ok !== true || !Array.isArray(data.submissions)) {
+        reject(new Error("Sheet endpoint did not return submissions."));
+        return;
+      }
+      resolve(data.submissions);
+    };
+
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("Could not load Apps Script JSONP endpoint."));
+    };
+
+    script.src = APPS_SCRIPT_WEB_APP_URL + "?action=submissions&callback=" + encodeURIComponent(callbackName) + "&cacheBust=" + Date.now();
+    document.body.appendChild(script);
+  });
+}
+
 async function readSubmissionsFromAppsScript() {
-  const url = APPS_SCRIPT_WEB_APP_URL + "?action=submissions&cacheBust=" + Date.now();
-  const response = await fetch(url);
-  const data = await response.json();
-  if (!data || data.ok !== true || !Array.isArray(data.submissions)) {
-    throw new Error("Sheet endpoint did not return submissions.");
-  }
-  return data.submissions.map((row, index) => ({
+  const submissions = await readSubmissionsJsonp();
+  return submissions.map((row, index) => ({
     timestamp: row.timestamp || new Date().toISOString(),
     date: row.date || "",
     name: row.name || "",
@@ -725,7 +754,7 @@ export default function HouseCupPointLogger() {
       setLastSaved(sheetRows[0] || null);
       setSheetStatus("Synced " + sheetRows.length + " Sheet row(s). Shared leaderboard loaded.");
     } catch (error) {
-      setSheetStatus("Could not sync Sheet. Check Apps Script deployment/access.");
+      setSheetStatus("Could not sync Sheet. Confirm Apps Script doGet supports JSONP callback and deployment access is Anyone.");
       console.error(error);
     }
   }
