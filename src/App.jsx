@@ -65,7 +65,7 @@ const ROSTER = [
   { name: "Emily Tishkoff", house: "Catalina", role: "PGY3" },
   { name: "Esther Cheng", house: "Tucson", role: "PGY2" },
   { name: "Ethan Renfrew", house: "Rincon", role: "PGY2" },
-  { name: "Eric Brucks", house: "Tucson", role: "PGY3" },
+  { name: "Eric Brucks", house: "Tucson", role: "PD_APD" },
   { name: "Faissal Stipho", house: "Santa Rita", role: "PGY3" },
   { name: "Faith Kim", house: "Rincon", role: "PGY2" },
   { name: "Francine Holguin", house: "Tucson", role: "PGY1" },
@@ -636,6 +636,7 @@ function runSelfTests() {
   console.assert(splitAttendanceNames("A, B\nC").length === 3, "Attendance splitting should handle comma and newline input");
   console.assert(findRosterPerson("Nate Walton")?.house === "Catalina", "Known roster person should resolve to house");
   console.assert(authenticateChief("Nate", "wootwoot1!")?.house === "Catalina", "Chief login should authenticate known chief");
+  console.assert(findRosterPerson("Eric Brucks")?.role === "PD_APD", "Eric Brucks should be listed as PD/APD");
   console.assert(canChiefApprovePitch("Rosie", { house: "Catalina" }) === true, "Different-house chief should approve pitch");
   console.assert(canChiefApprovePitch("Nate", { house: "Catalina" }) === false, "Same-house chief should not approve pitch");
 }
