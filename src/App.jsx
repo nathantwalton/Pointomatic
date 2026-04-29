@@ -4,9 +4,7 @@ import { Analytics } from "@vercel/analytics/react";
 const ADMIN_EMAIL = "nathantwalton@gmail.com";
 const GOOGLE_EVIDENCE_FOLDER_URL = "https://drive.google.com/drive/folders/15zhX3e1Hf4ExWgkwJK6gjevOggPO8MG8?usp=drive_link";
 const GOOGLE_SUBMISSIONS_SHEET_URL = "https://docs.google.com/spreadsheets/d/1-qxEZt2q_n6Len0yIcMfODnLyIsDfz-yhD60AkcSz5U/edit?gid=0#gid=0";
-const APPS_SCRIPT_WEB_APP_URL =
-  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_APPS_SCRIPT_WEB_APP_URL) ||
-  "https://script.google.com/macros/s/AKfycbyO1HJ0dokejC574nuUeMdPgQcrMAcrXXVpG6ZnLCT3SNAAyze6XYtlafqsXCEbyiE/exec";
+const APPS_SCRIPT_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyO1HJ0dokejC574nuUeMdPgQcrMAcrXXVpG6ZnLCT3SNAAyze6XYtlafqsXCEbyiE/exec";
 
 const HOUSES = ["Catalina", "Rincon", "Santa Rita", "Tortolita", "Tucson"];
 
@@ -453,7 +451,7 @@ function fileToBase64(file) {
 }
 
 async function submitToAppsScript(row, photoFile) {
-  if (!APPS_SCRIPT_WEB_APP_URL) return { ok: false, skipped: true };
+  if (!APPS_SCRIPT_WEB_APP_URL) throw new Error("Missing Apps Script URL");
   const payload = { ...row };
   if (photoFile) {
     payload.photoBase64 = await fileToBase64(photoFile);
@@ -463,10 +461,11 @@ async function submitToAppsScript(row, photoFile) {
   await fetch(APPS_SCRIPT_WEB_APP_URL, {
     method: "POST",
     mode: "no-cors",
+    cache: "no-store",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify(payload),
   });
-  return { ok: true };
+  return { ok: true, sentTo: APPS_SCRIPT_WEB_APP_URL };
 }
 
 async function submitRowsToAppsScript(rows) {
