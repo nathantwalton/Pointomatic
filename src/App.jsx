@@ -1498,7 +1498,7 @@ export default function PointOMatic() {
       <RosterDatalist />
       <header className="pom-header">
         <h1 className="pom-title">POINT-O-MATIC</h1>
-        <p className="pom-tag">UA Internal Medicine House Cup · five houses, one desert, zero chill</p>
+        <p className="pom-tag">Welcome Residents · Log your points · Be well · Touch grass · Do good work </p>
       </header>
 
       {tab === "earn" && <EarnTab challenges={challenges} monsoon={monsoon} />}
