@@ -12,6 +12,7 @@ const GOOGLE_EVIDENCE_FOLDER_URL = "https://drive.google.com/drive/folders/15zhX
 
 // Paste your deployed Google Apps Script Web App /exec URL here after deployment.
 const APPS_SCRIPT_WEB_APP_URL =
+  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_APPS_SCRIPT_WEB_APP_URL) ||
   "https://script.google.com/macros/s/AKfycbyO1HJ0dokejC574nuUeMdPgQcrMAcrXXVpG6ZnLCT3SNAAyze6XYtlafqsXCEbyiE/exec";
 
 const HOUSES = ["Catalina", "Rincon", "Santa Rita", "Tortolita", "Tucson"];
@@ -1497,7 +1498,7 @@ export default function PointOMatic() {
       <RosterDatalist />
       <header className="pom-header">
         <h1 className="pom-title">POINT-O-MATIC</h1>
-        <p className="pom-tag">Welcome Residents · Log your points · Be well · Touch grass · Do good work </p>
+        <p className="pom-tag">Welcome Residents · Log your points · Be well · Touch grass · Do good work</p>
       </header>
 
       {tab === "earn" && <EarnTab challenges={challenges} monsoon={monsoon} />}
