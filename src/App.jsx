@@ -8,6 +8,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
    ===================================================================== */
 
 const ADMIN_EMAIL = "uaztucsonchiefs@gmail.com";
+const WEBMASTER_EMAIL = "nathantwalton@arizona.edu";
 const GOOGLE_EVIDENCE_FOLDER_URL = "https://drive.google.com/drive/folders/15zhX3e1Hf4ExWgkwJK6gjevOggPO8MG8?usp=drive_link";
 
 // Paste your deployed Google Apps Script Web App /exec URL here after deployment.
@@ -237,6 +238,14 @@ const ACTIVITIES = [
     blurb: "Summits, Loop epics, weird Tucson side quests.",
   },
   {
+    id: "points_request",
+    label: "Points request",
+    points: 1,
+    icon: "🙋",
+    blurb: "Low-proof discretionary ask. Pick 1–10 pts, explain the lore, photo optional.",
+    lowProof: true,
+  },
+  {
     id: "allstar",
     label: "IM All-Star shout-out",
     points: 2,
@@ -328,6 +337,45 @@ function formatGap(value) {
   return String(Math.ceil(n));
 }
 
+function canvasToBlob(canvas, mimeType, quality) {
+  return new Promise(function toBlob(resolve) {
+    if (!canvas.toBlob) { resolve(null); return; }
+    canvas.toBlob(function done(blob) { resolve(blob); }, mimeType, quality);
+  });
+}
+
+async function compressImageFile(file) {
+  if (!file || !String(file.type || "").startsWith("image/")) return file;
+  if (file.size && file.size < 450000) return file;
+  try {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.decoding = "async";
+    const loaded = new Promise(function wait(resolve, reject) {
+      img.onload = resolve;
+      img.onerror = reject;
+    });
+    img.src = url;
+    await loaded;
+    const maxSide = 1400;
+    const scale = Math.min(1, maxSide / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+    const w = Math.max(1, Math.round((img.naturalWidth || img.width) * scale));
+    const h = Math.max(1, Math.round((img.naturalHeight || img.height) * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, w, h);
+    URL.revokeObjectURL(url);
+    const blob = await canvasToBlob(canvas, "image/jpeg", 0.72);
+    if (!blob) return file;
+    const compressedName = String(file.name || "house-cup-photo").replace(/\.[^.]+$/, "") + "-compressed.jpg";
+    return new File([blob], compressedName, { type: "image/jpeg", lastModified: Date.now() });
+  } catch (err) {
+    return file;
+  }
+}
+
 function fileToBase64(file) {
   return new Promise(function convert(resolve, reject) {
     if (!file) { resolve(""); return; }
@@ -340,6 +388,10 @@ function fileToBase64(file) {
     reader.onerror = function onError() { reject(reader.error || new Error("Could not read file")); };
     reader.readAsDataURL(file);
   });
+}
+
+function makeSubmissionId(prefix) {
+  return String(prefix || "pom") + "-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
 }
 
 // POST is fire-and-forget (no-cors keeps Apps Script simple); GET summary is readable JSON.
@@ -443,6 +495,7 @@ function EarnTab(props) {
   const [name, setName] = useState(recallName());
   const [activityId, setActivityId] = useState("");
   const [showWhy, setShowWhy] = useState(false);
+  const [requestedPoints, setRequestedPoints] = useState(1);
   const [bigQuest, setBigQuest] = useState(BIG_QUESTS[0].label);
   const [squadInput, setSquadInput] = useState("");
   const [squad, setSquad] = useState([]);
@@ -451,6 +504,7 @@ function EarnTab(props) {
   const [shoutReason, setShoutReason] = useState("");
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState("");
+  const [photoStatus, setPhotoStatus] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [burst, setBurst] = useState(null);
@@ -467,10 +521,12 @@ function EarnTab(props) {
   const allActivities = bountyActivity ? [bountyActivity].concat(ACTIVITIES) : ACTIVITIES;
   const activity = allActivities.find(function f(a) { return a.id === activityId; }) || null;
   const isShout = activityId === "allstar";
+  const isPointsRequest = activityId === "points_request";
   const shoutTarget = findRosterPerson(shoutTo);
 
   const effectivePoints = useMemo(function pts() {
     if (!activity) return 0;
+    if (activity.id === "points_request") return Math.max(1, Math.min(10, Number(requestedPoints) || 1));
     if (activity.id === "big_challenge") {
       const q = BIG_QUESTS.find(function f(b) { return b.label === bigQuest; });
       return q ? q.points : 5;
@@ -480,7 +536,7 @@ function EarnTab(props) {
       return live && live.points ? Number(live.points) : activity.points;
     }
     return activity.points;
-  }, [activity, bigQuest, challenges]);
+  }, [activity, bigQuest, challenges, requestedPoints]);
 
   const monsoonBoost = monsoon && me && me.house === monsoon.house;
   const displayPoints = monsoonBoost ? effectivePoints * 2 : effectivePoints;
@@ -495,17 +551,22 @@ function EarnTab(props) {
     setStatus("");
   }
 
-  function onPhotoChange(e) {
+  async function onPhotoChange(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    setPhotoFile(file);
-    const url = URL.createObjectURL(file);
+    setPhotoStatus("Optimizing photo for faster upload…");
+    const optimized = await compressImageFile(file);
+    setPhotoFile(optimized);
+    const url = URL.createObjectURL(optimized);
     setPhotoPreview(url);
+    const savedPct = file.size && optimized.size ? Math.max(0, Math.round((1 - optimized.size / file.size) * 100)) : 0;
+    setPhotoStatus(savedPct > 10 ? "Photo optimized — " + savedPct + "% smaller, faster mash." : "Photo ready.");
   }
 
   function clearPhoto() {
     setPhotoFile(null);
     setPhotoPreview("");
+    setPhotoStatus("");
     if (photoInputRef.current) photoInputRef.current.value = "";
   }
 
@@ -517,18 +578,21 @@ function EarnTab(props) {
       if (!shoutReason.trim()) return "Tell us why they're an All-Star";
       return "";
     }
-    if (!photoFile) return "Snap the photo evidence";
+    if (isPointsRequest && !note.trim()) return "Tell us why you're requesting points";
+    if (!isPointsRequest && !photoFile) return "Snap the photo evidence";
     return "";
   })();
 
   async function mash() {
     if (readyReason || busy) return;
     setBusy(true);
-    setStatus("");
+    setStatus("Uploading… compressed photos make this much faster.");
+    const submissionId = makeSubmissionId(activityId || "points");
     try {
       if (isShout) {
         await postToBackend({
           action: "shoutout",
+          clientSubmissionId: submissionId,
           date: todayString(),
           from: me.name,
           fromHouse: me.house,
@@ -548,19 +612,23 @@ function EarnTab(props) {
         const liveChallenge = activity.challenge ? challenges[activity.challenge] : null;
         await postToBackend({
           action: "submit",
+          clientSubmissionId: submissionId,
+          proofLevel: isPointsRequest ? "low" : "standard",
+          requestedPoints: isPointsRequest ? effectivePoints : "",
           date: todayString(),
           submitter: me.name,
           activityId: activity.id,
           activity: activity.id === "big_challenge" ? "Big Tucson quest: " + bigQuest
             : activity.id === "bounty" ? "Bounty: " + (bounty ? bounty.title : "")
+            : activity.id === "points_request" ? "Points request: " + effectivePoints + " pts requested"
             : liveChallenge ? activity.label + ": " + liveChallenge.title
             : activity.label,
           points: effectivePoints,
           participants: participants,
           note: note.trim(),
-          photoBase64: await fileToBase64(photoFile),
-          photoName: photoFile.name || "house-cup-photo.jpg",
-          photoMimeType: photoFile.type || "image/jpeg",
+          photoBase64: photoFile ? await fileToBase64(photoFile) : "",
+          photoName: photoFile ? (photoFile.name || "house-cup-photo.jpg") : "",
+          photoMimeType: photoFile ? (photoFile.type || "image/jpeg") : "",
         });
         const crewNote = participants.length > 1 ? " × " + participants.length + " crew" : "";
         setBurst({ points: displayPoints, label: "House " + me.house + crewNote });
@@ -572,6 +640,7 @@ function EarnTab(props) {
       setNote("");
       setShoutTo("");
       setShoutReason("");
+      setRequestedPoints(1);
       clearPhoto();
       setTimeout(function fade() { setBurst(null); setStatus(""); }, 3200);
     } catch (err) {
@@ -632,19 +701,21 @@ function EarnTab(props) {
               >
                 <span className="pom-act-icon">{a.icon}</span>
                 <span className="pom-act-label">{a.label}</span>
-                <span className="pom-act-pts">{a.id === "big_challenge" ? "5–8" : pts} pts</span>
+                <span className="pom-act-pts">{a.id === "big_challenge" ? "5–8" : a.id === "points_request" ? "1–10" : pts} pts</span>
               </button>
             );
           })}
+          <button
+            type="button"
+            className={"pom-act pom-info-act " + (showWhy ? "active" : "")}
+            onClick={function toggleWhy() { setShowWhy(!showWhy); }}
+          >
+            <span className="pom-act-icon">🤔</span>
+            <span className="pom-act-label">Tell me why</span>
+            <span className="pom-act-pts">rules</span>
+          </button>
         </div>
         {activity && <p className="pom-act-blurb">{activity.blurb}</p>}
-        <button
-          type="button"
-          className="pom-why-toggle"
-          onClick={function toggleWhy() { setShowWhy(!showWhy); }}
-        >
-          {showWhy ? "Hide point theology" : "Tell me why I should give you points"}
-        </button>
         {showWhy && (
           <div className="pom-why-box">
             <strong>Point theology, briefly:</strong>
@@ -662,12 +733,23 @@ function EarnTab(props) {
             {BIG_QUESTS.map(function opt(q) { return <option key={q.label} value={q.label}>{q.label} · {q.points} pts</option>; })}
           </select>
         )}
+        {activity && activity.id === "points_request" && (
+          <div className="pom-request-box">
+            <label className="pom-hint" htmlFor="pom-request-points">How many points are you requesting?</label>
+            <div className="pom-stepper-row">
+              <button type="button" className="pom-step-btn" onClick={function dn() { setRequestedPoints(Math.max(1, requestedPoints - 1)); }}>−</button>
+              <span id="pom-request-points" className="pom-step-val">{requestedPoints} pt{requestedPoints === 1 ? "" : "s"}</span>
+              <button type="button" className="pom-step-btn" onClick={function up() { setRequestedPoints(Math.min(10, requestedPoints + 1)); }}>+</button>
+            </div>
+            <p className="pom-hint">Low-proof mode: photo optional, explanation required. Chiefs can adjust later if the desert math is suspicious.</p>
+          </div>
+        )}
       </section>
 
       {activity && !isShout && (
         <section className="pom-card">
           <h2 className="pom-step"><span className="pom-step-n">3</span> Who was with you?</h2>
-          <p className="pom-hint">Everyone you tag gets {effectivePoints} pts for their own house. Same photo covers the whole crew.</p>
+          <p className="pom-hint">{isPointsRequest ? "Optional: tag anyone else who should be included in this discretionary request." : "Everyone you tag gets " + effectivePoints + " pts for their own house. Same photo covers the whole crew."}</p>
           <div className="pom-squad-row">
             <input
               className="pom-input"
@@ -714,7 +796,7 @@ function EarnTab(props) {
 
       {activity && (
         <section className="pom-card">
-          <h2 className="pom-step"><span className="pom-step-n">4</span> Photo evidence {isShout ? <em className="pom-optional">(optional for shout-outs)</em> : <em className="pom-required">(required)</em>}</h2>
+          <h2 className="pom-step"><span className="pom-step-n">4</span> Photo evidence {(isShout || isPointsRequest) ? <em className="pom-optional">(optional)</em> : <em className="pom-required">(required)</em>}</h2>
           <input
             ref={photoInputRef}
             id="pom-photo"
@@ -732,10 +814,11 @@ function EarnTab(props) {
               <button type="button" className="pom-btn-secondary" onClick={clearPhoto}>Retake</button>
             </div>
           )}
+          {photoStatus && <p className="pom-upload-note">{photoStatus}</p>}
           {!isShout && (
             <input
               className="pom-input"
-              placeholder="Optional note (where, what, lore…)"
+              placeholder={isPointsRequest ? "Required: why should chiefs award these points?" : "Optional note (where, what, lore…)"}
               value={note}
               onChange={function onNote(e) { setNote(e.target.value); }}
             />
@@ -763,7 +846,7 @@ function EarnTab(props) {
           )}
         </button>
         {readyReason && <p className="pom-mash-hint">{readyReason}</p>}
-        {status && status !== "done" && <p className="pom-error">{status}</p>}
+        {status && status !== "done" && <p className={status.indexOf("Upload") === 0 ? "pom-ok" : "pom-error"}>{status}</p>}
         <p className="pom-raffle-note">🎟️ Every mash = 1 ticket in this month's gift card raffle. Points optional, tickets guaranteed.</p>
       </div>
     </div>
@@ -1439,7 +1522,13 @@ body {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
 }
-
+.pom-webmaster {
+  position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; margin-top: 10px;
+  border: 2px solid var(--ink); border-radius: 999px; padding: 7px 12px; background: #fff;
+  color: var(--ink); text-decoration: none; font-size: 12px; font-weight: 900;
+  box-shadow: 3px 3px 0 var(--ink); text-transform: uppercase; letter-spacing: 0.02em;
+}
+.pom-webmaster:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
 
 .pom-quarter-card {
   background:
@@ -1539,17 +1628,12 @@ body {
 }
 .pom-act:hover { transform: translate(-1px, -2px); box-shadow: 5px 5px 0 var(--ink); }
 .pom-act.active { border-color: var(--ink); background: #FFF0E0; box-shadow: 4px 4px 0 var(--sunset); }
+.pom-info-act { background: #FFF3BF; }
 .pom-act-icon { font-size: 26px; }
 .pom-act-label { font-weight: 800; font-size: 14px; text-align: center; }
 .pom-act-pts { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: var(--sunset-deep); }
 .pom-act-blurb { color: var(--ink-soft); font-size: 13px; margin: 10px 0; }
-.pom-why-toggle {
-  width: 100%; margin: 4px 0 2px; border: 2px solid var(--ink); border-radius: 10px;
-  background: #FFF3BF; color: var(--ink); font-family: 'IBM Plex Mono', monospace;
-  font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em;
-  padding: 10px 12px; cursor: pointer; box-shadow: 3px 3px 0 var(--ink);
-}
-.pom-why-toggle:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.pom-request-box { margin-top: 10px; }
 .pom-why-box {
   margin-top: 12px; padding: 12px 14px; border: 2px dashed var(--ink); border-radius: 12px;
   background: #FFF9DB; color: var(--ink); font-size: 13px; line-height: 1.45;
@@ -1569,6 +1653,7 @@ body {
 }
 .pom-photo-preview { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 10px; }
 .pom-photo-preview img { width: 130px; height: 130px; object-fit: cover; border-radius: 14px; border: 3px solid #fff; box-shadow: 0 3px 10px rgba(61,43,82,0.25); transform: rotate(-2deg); }
+.pom-upload-note { margin: -2px 0 10px; color: var(--ink-soft); font-size: 12px; font-weight: 800; }
 
 .pom-btn-primary {
   border: 0; border-radius: 12px; background: var(--ink); color: #fff; font-family: inherit;
@@ -1768,6 +1853,7 @@ export default function PointOMatic() {
             <span>Log your points</span><span>Be well</span><span>Touch grass</span><span>Do good work</span><span>Hydrate</span><span>Submit evidence</span>
           </div>
         </div>
+        <a className="pom-webmaster" href={"mailto:" + WEBMASTER_EMAIL + "?subject=Point-O-Matic%20help%20/%20bug%20report"}>✉️ Email webmaster</a>
       </header>
 
       {tab === "earn" && <EarnTab challenges={challenges} monsoon={monsoon} />}
