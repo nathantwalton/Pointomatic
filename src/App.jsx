@@ -241,7 +241,7 @@ const ACTIVITIES = [
     label: "IM All-Star shout-out",
     points: 2,
     icon: "⭐",
-    blurb: "Give 2 pts to someone who crushed it. Reason required.",
+    blurb: "Nominate someone who crushed it. The submitter earns 2 pts; the nominee gets the glory. Reason required.",
   },
 ];
 
@@ -295,6 +295,39 @@ function todayString() {
   return d.getFullYear() + "-" + m + "-" + day;
 }
 
+function dateFromYMD(value) {
+  const parts = String(value || "").split("-").map(function num(x) { return Number(x); });
+  return new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
+}
+
+function getAcademicQuarterInfo(now) {
+  const d = now || new Date();
+  const year = d.getFullYear();
+  const month = d.getMonth();
+  const academicStartYear = month >= 6 ? year : year - 1;
+  const quarters = [
+    { key: "Q1", label: "Q1", startDate: academicStartYear + "-07-01", endDate: academicStartYear + "-09-30", prize: "Conference credit" },
+    { key: "Q2", label: "Q2", startDate: academicStartYear + "-10-01", endDate: academicStartYear + "-12-31", prize: "Conference credit" },
+    { key: "Q3", label: "Q3", startDate: (academicStartYear + 1) + "-01-01", endDate: (academicStartYear + 1) + "-03-31", prize: "Conference credit" },
+    { key: "Q4", label: "Q4", startDate: (academicStartYear + 1) + "-04-01", endDate: (academicStartYear + 1) + "-06-30", prize: "Conference credit + MICU coverage glory" },
+  ];
+  const today = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const active = quarters.find(function findQ(q) {
+    return today >= dateFromYMD(q.startDate) && today <= dateFromYMD(q.endDate);
+  }) || quarters[0];
+  const end = dateFromYMD(active.endDate);
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const daysLeft = Math.max(0, Math.ceil((end - today) / msPerDay));
+  return Object.assign({}, active, { daysLeft: daysLeft, academicYear: academicStartYear + "–" + String(academicStartYear + 1).slice(-2) });
+}
+
+function formatGap(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  if (n <= 0) return "0";
+  return String(Math.ceil(n));
+}
+
 function fileToBase64(file) {
   return new Promise(function convert(resolve, reject) {
     if (!file) { resolve(""); return; }
@@ -321,8 +354,11 @@ async function postToBackend(payload) {
   return { ok: true };
 }
 
-async function fetchSummary() {
-  const res = await fetch(APPS_SCRIPT_WEB_APP_URL + "?action=summary", { method: "GET" });
+async function fetchSummary(period, userName) {
+  const params = new URLSearchParams({ action: "summary" });
+  if (period) params.set("period", period);
+  if (userName) params.set("user", userName);
+  const res = await fetch(APPS_SCRIPT_WEB_APP_URL + "?" + params.toString(), { method: "GET" });
   if (!res.ok) throw new Error("Summary request failed: " + res.status);
   return res.json();
 }
@@ -406,6 +442,7 @@ function EarnTab(props) {
   const bounty = props.challenges.bounty || null;
   const [name, setName] = useState(recallName());
   const [activityId, setActivityId] = useState("");
+  const [showWhy, setShowWhy] = useState(false);
   const [bigQuest, setBigQuest] = useState(BIG_QUESTS[0].label);
   const [squadInput, setSquadInput] = useState("");
   const [squad, setSquad] = useState([]);
@@ -496,14 +533,16 @@ function EarnTab(props) {
           from: me.name,
           fromHouse: me.house,
           to: shoutTarget.name,
-          house: shoutTarget.house,
+          house: me.house,
+          nomineeHouse: shoutTarget.house,
+          toHouse: shoutTarget.house,
           points: effectivePoints,
           reason: shoutReason.trim(),
           photoBase64: photoFile ? await fileToBase64(photoFile) : "",
           photoName: photoFile ? photoFile.name : "",
           photoMimeType: photoFile ? photoFile.type : "",
         });
-        setBurst({ points: effectivePoints, label: shoutTarget.name + " · House " + shoutTarget.house });
+        setBurst({ points: displayPoints, label: "House " + me.house + " · All-Star nom for " + shoutTarget.name });
       } else {
         const participants = [{ name: me.name, house: me.house }].concat(squad);
         const liveChallenge = activity.challenge ? challenges[activity.challenge] : null;
@@ -593,12 +632,31 @@ function EarnTab(props) {
               >
                 <span className="pom-act-icon">{a.icon}</span>
                 <span className="pom-act-label">{a.label}</span>
-                <span className="pom-act-pts">{a.id === "big_challenge" ? "5–8" : pts}{a.id === "allstar" ? " pts →" : " pts"}</span>
+                <span className="pom-act-pts">{a.id === "big_challenge" ? "5–8" : pts} pts</span>
               </button>
             );
           })}
         </div>
         {activity && <p className="pom-act-blurb">{activity.blurb}</p>}
+        <button
+          type="button"
+          className="pom-why-toggle"
+          onClick={function toggleWhy() { setShowWhy(!showWhy); }}
+        >
+          {showWhy ? "Hide point theology" : "Tell me why I should give you points"}
+        </button>
+        {showWhy && (
+          <div className="pom-why-box">
+            <strong>Point theology, briefly:</strong>
+            <ul>
+              <li><strong>Group hang / group exercise:</strong> 2+ people, photo evidence, everyone tagged gets points for their own house.</li>
+              <li><strong>Academic flex:</strong> teaching, journal club, QI, research, abstracts, or other resident-brain nourishment.</li>
+              <li><strong>Wellness / photo quests:</strong> whatever challenge the chiefs have live that block.</li>
+              <li><strong>Big Tucson quest:</strong> higher-effort desert side quests, summits, Loop epics, and other lore-worthy activities.</li>
+              <li><strong>IM All-Star:</strong> nominate someone who went above and beyond. The <em>person submitting the nomination</em> gets 2 points; the nominee gets the shout-out and monthly prize eligibility.</li>
+            </ul>
+          </div>
+        )}
         {activity && activity.id === "big_challenge" && (
           <select className="pom-input" value={bigQuest} onChange={function onQ(e) { setBigQuest(e.target.value); }}>
             {BIG_QUESTS.map(function opt(q) { return <option key={q.label} value={q.label}>{q.label} · {q.points} pts</option>; })}
@@ -643,7 +701,7 @@ function EarnTab(props) {
             onChange={function onT(e) { setShoutTo(e.target.value); }}
             autoComplete="off"
           />
-          {shoutTarget && <div className="pom-me"><HouseChip house={shoutTarget.house} /></div>}
+          {shoutTarget && <div className="pom-me"><HouseChip house={shoutTarget.house} /> <span className="pom-me-hi">nominee gets the shout-out; your house gets the 2 pts</span></div>}
           <textarea
             className="pom-input pom-textarea"
             placeholder="Why do they deserve the shout-out? (required — make it count)"
@@ -734,19 +792,24 @@ function MountainBar(props) {
 }
 
 function GloryTab() {
+  const [scope, setScope] = useState("quarter");
   const [data, setData] = useState(null);
   const [state, setState] = useState("loading");
   const [votedFor, setVotedFor] = useState("");
   const [voteMsg, setVoteMsg] = useState("");
+  const quarterInfo = getAcademicQuarterInfo(new Date());
+  const rememberedName = recallName();
+  const rememberedPerson = findRosterPerson(rememberedName);
 
-  function load() {
+  function load(nextScope) {
+    const requestedScope = nextScope || scope;
     setState("loading");
-    fetchSummary()
+    fetchSummary(requestedScope, rememberedPerson ? rememberedPerson.name : "")
       .then(function ok(json) { setData(json); setState("ready"); })
       .catch(function bad() { setState("error"); });
   }
 
-  useEffect(function onMount() { load(); }, []);
+  useEffect(function onScopeChange() { load(scope); }, [scope]);
 
   const houseRows = useMemo(function rows() {
     const totals = (data && data.houseTotals) || {};
@@ -762,7 +825,7 @@ function GloryTab() {
     return (
       <div className="pom-card pom-center">
         <p>The standings didn't load. Check your connection, then try again.</p>
-        <button type="button" className="pom-btn-primary" onClick={load}>Reload standings</button>
+        <button type="button" className="pom-btn-primary" onClick={function reload() { load(scope); }}>Reload standings</button>
       </div>
     );
   }
@@ -775,6 +838,15 @@ function GloryTab() {
   const sorted = houseRows.slice().sort(function bySort(a, b) { return b.points - a.points; });
   const saguaroHolder = leaderPts > 0 ? sorted[0].house : null;
   const tumbleweedHolder = leaderPts > 0 ? sorted[sorted.length - 1].house : null;
+  const scopeTitle = scope === "quarter" ? "This Quarter" : "All Season";
+  const myFromLeaderboard = rememberedPerson ? scorers.find(function findMe(s) { return normalizeName(s.name) === normalizeName(rememberedPerson.name); }) : null;
+  const myStats = (data && data.myStats) || {};
+  const myPoints = myStats.points != null ? Math.round(Number(myStats.points || 0)) : (myFromLeaderboard ? Math.round(Number(myFromLeaderboard.points || 0)) : 0);
+  const myRank = myStats.rank || (myFromLeaderboard ? scorers.findIndex(function idx(s) { return normalizeName(s.name) === normalizeName(rememberedPerson.name); }) + 1 : null);
+  const myRaffleTickets = myStats.raffleTicketsThisMonth != null ? myStats.raffleTicketsThisMonth : null;
+  const myTopTenGap = myStats.pointsToTop10 != null ? myStats.pointsToTop10 : null;
+  const myHouseRow = rememberedPerson ? houseRows.find(function h(r) { return r.house === rememberedPerson.house; }) : null;
+  const myHouseGap = rememberedPerson && myHouseRow ? Math.max(0, leaderPts - myHouseRow.points) : null;
 
   function castVote(photoId) {
     const voter = recallName() || window.prompt("Who's voting? (your roster name)") || "";
@@ -792,8 +864,51 @@ function GloryTab() {
         <div className="pom-monsoon">🌧️ MONSOON WEEK — House {data.monsoon.house} is earning DOUBLE points{data.monsoon.endDate ? " through " + data.monsoon.endDate : ""}.</div>
       )}
 
+      <section className="pom-card pom-quarter-card">
+        <div className="pom-scope-topline">
+          <span className="pom-quarter-badge">{quarterInfo.label} · AY {quarterInfo.academicYear}</span>
+          <span className="pom-countdown">⏳ {quarterInfo.label} ends in <strong>{quarterInfo.daysLeft}</strong> day{quarterInfo.daysLeft === 1 ? "" : "s"}</span>
+        </div>
+        <h2 className="pom-h2">Quarter Awareness</h2>
+        <p className="pom-hint">Conference credit and the MICU coverage prize live here. Deadline pressure is free motivation.</p>
+        <div className="pom-scope-toggle" role="tablist" aria-label="Leaderboard scope">
+          <button type="button" className={"pom-scope-btn " + (scope === "quarter" ? "active" : "")} onClick={function q() { setScope("quarter"); }}>This Quarter</button>
+          <button type="button" className={"pom-scope-btn " + (scope === "season" ? "active" : "")} onClick={function s() { setScope("season"); }}>All Season</button>
+        </div>
+      </section>
+
+      {rememberedPerson ? (
+        <section className="pom-card pom-my-card" style={{ borderColor: HOUSE_COLORS[rememberedPerson.house] || "#1F1B16" }}>
+          <div className="pom-my-head">
+            <div>
+              <span className="pom-quarter-badge">My Stats · {scopeTitle}</span>
+              <h2 className="pom-h2">{rememberedPerson.name.split(" ")[0]}'s Dashboard</h2>
+            </div>
+            <HouseChip house={rememberedPerson.house} />
+          </div>
+          <div className="pom-my-grid">
+            <div><span>Points</span><strong>{myPoints}</strong></div>
+            <div><span>Rank</span><strong>{myRank ? "#" + myRank : "—"}</strong></div>
+            <div><span>Raffle tickets</span><strong>{myRaffleTickets != null ? myRaffleTickets : "—"}</strong></div>
+            <div><span>House gap to 1st</span><strong>{formatGap(myHouseGap)} pts</strong></div>
+          </div>
+          <p className="pom-hint pom-my-motivator">
+            {myTopTenGap != null && Number(myTopTenGap) > 0
+              ? "You are " + formatGap(myTopTenGap) + " points from the top 10. This is medically actionable."
+              : myRank && myRank <= 10
+                ? "Top 10 behavior. Maintain altitude."
+                : "Mash a few points and this card gets much more satisfying."}
+          </p>
+        </section>
+      ) : (
+        <section className="pom-card pom-my-card">
+          <h2 className="pom-h2">My Stats</h2>
+          <p className="pom-hint">Type your roster name once on the Earn tab, then this card will show your points, rank, monthly raffle tickets, and your house's gap to first.</p>
+        </section>
+      )}
+
       <section className="pom-card">
-        <h2 className="pom-h2">The Range Race</h2>
+        <h2 className="pom-h2">The Range Race · {scopeTitle}</h2>
         <p className="pom-hint">Every house is a Tucson range. Highest peak takes the Cup.</p>
         <div className="pom-peaks">
           {houseRows.map(function bar(r) {
@@ -806,7 +921,7 @@ function GloryTab() {
             <span className="pom-trophy shame">🌾 The Tumbleweed haunts <strong>House {tumbleweedHolder}</strong></span>
           </div>
         )}
-        {data && data.totalsAsOf && <p className="pom-asof">As of {data.totalsAsOf} · conference points sync in every Monday · 🎟️ {data.raffleTickets || 0} tickets in this month's raffle drum</p>}
+        {data && data.totalsAsOf && <p className="pom-asof">As of {data.totalsAsOf} · showing {scopeTitle.toLowerCase()} · conference points sync in every Monday · 🎟️ {data.raffleTickets || 0} tickets in this month's raffle drum</p>}
       </section>
 
       {rivalry && (
@@ -847,7 +962,7 @@ function GloryTab() {
       )}
 
       <section className="pom-card">
-        <h2 className="pom-h2">High Scorers</h2>
+        <h2 className="pom-h2">High Scorers · {scopeTitle}</h2>
         {scorers.length === 0 && <p className="pom-hint">Nobody on the board yet — the first mash makes history.</p>}
         <ol className="pom-scorers">
           {scorers.map(function row(s, i) {
@@ -868,7 +983,7 @@ function GloryTab() {
       <section className="pom-card">
         <h2 className="pom-h2">⭐ Wall of Fame</h2>
         <p className="pom-hint">Recent All-Star shout-outs. Best one each month wins prizes for the nominee <em>and</em> the nominator.</p>
-        {shoutouts.length === 0 && <p className="pom-hint">No shout-outs yet. Someone near you deserves 2 points — go tell the app why.</p>}
+        {shoutouts.length === 0 && <p className="pom-hint">No shout-outs yet. Someone near you deserves the glory — and the nominator's house deserves 2 points.</p>}
         <ul className="pom-fame">
           {shoutouts.map(function sh(s, i) {
             const color = HOUSE_COLORS[s.house] || "#888";
@@ -1207,36 +1322,166 @@ function PomStyles() {
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Nunito+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
 
 :root {
-  --sky: #FFF4E6;
-  --paper: #FFFDF9;
-  --ink: #3D2B52;
-  --ink-soft: #6E5A85;
-  --sunset: #F76707;
-  --sunset-deep: #E8590C;
-  --gold: #FFC53D;
-  --line: #EAD9C4;
+  --sky: #FFF1C7;
+  --paper: #FFF7D6;
+  --ink: #1F1B16;
+  --ink-soft: #6B5438;
+  --sunset: #FF6B00;
+  --sunset-deep: #D9480F;
+  --gold: #FFE66D;
+  --line: #1F1B16;
+  --retro-green: #2FEE68;
+  --retro-pink: #FF4D8D;
+  --retro-blue: #20C7FF;
 }
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; padding: 0; }
 body {
-  background: linear-gradient(180deg, #FFE8CC 0%, var(--sky) 240px);
+  background:
+    radial-gradient(circle at 18px 18px, rgba(31,27,22,0.08) 2px, transparent 3px),
+    linear-gradient(180deg, #FFD166 0%, #FFE0A3 210px, #FFF3DA 100%);
+  background-size: 28px 28px, 100% 100%;
   color: var(--ink);
   font-family: 'Nunito Sans', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 .pom-shell { max-width: 640px; margin: 0 auto; padding: 20px 16px 120px; }
-.pom-header { text-align: center; padding: 10px 0 18px; }
-.pom-title {
-  font-family: 'Bricolage Grotesque', sans-serif;
-  font-weight: 800; font-size: 40px; letter-spacing: -1px; margin: 0;
-  background: linear-gradient(92deg, var(--sunset-deep), #D6336C 55%, #7048E8);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
+.pom-header {
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  padding: 14px 12px 0;
+  margin: 0 0 18px;
+  border: 3px solid var(--ink);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.55), transparent 42%),
+    linear-gradient(180deg, #FFF7D6 0%, #FFD166 100%);
+  box-shadow: 7px 7px 0 var(--ink);
 }
-.pom-tag { margin: 4px 0 0; color: var(--ink-soft); font-size: 14px; font-weight: 600; }
+.pom-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(31,27,22,0.05) 0 1px, transparent 1px 5px);
+  mix-blend-mode: multiply;
+}
+.pom-kicker {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: #1F1B16;
+  color: var(--gold);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 5px 10px;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+.pom-title {
+  position: relative;
+  z-index: 1;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-weight: 800;
+  font-size: 42px;
+  line-height: 0.95;
+  letter-spacing: -0.5px;
+  margin: 0;
+  color: var(--ink);
+  text-shadow: 3px 3px 0 var(--gold), 5px 5px 0 var(--retro-pink);
+}
+.pom-tag {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  margin: 10px 0 12px;
+  padding: 5px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: #FFFDF9;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+.pom-ticker {
+  position: relative;
+  z-index: 1;
+  margin: 0 -12px;
+  border-top: 3px solid var(--ink);
+  background: #12100E;
+  color: var(--retro-green);
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pom-ticker-track {
+  display: flex;
+  width: max-content;
+  animation: pom-ticker-scroll 24s linear infinite;
+}
+.pom-ticker-track span {
+  display: inline-block;
+  padding: 9px 18px;
+  text-shadow: 0 0 8px rgba(47,238,104,0.72);
+}
+@keyframes pom-ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+
+.pom-quarter-card {
+  background:
+    linear-gradient(135deg, rgba(255,230,109,0.6), rgba(255,107,0,0.14)),
+    var(--paper);
+}
+.pom-scope-topline {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-bottom: 10px; flex-wrap: wrap;
+}
+.pom-quarter-badge {
+  display: inline-flex; align-items: center; border: 2px solid var(--ink); border-radius: 999px;
+  padding: 4px 10px; background: #1F1B16; color: var(--gold);
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 800; letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.pom-countdown {
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 800; color: var(--sunset-deep);
+  background: #FFFDF9; border: 2px solid var(--ink); border-radius: 999px; padding: 4px 10px;
+}
+.pom-scope-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.pom-scope-btn {
+  border: 3px solid var(--ink); border-radius: 12px; padding: 11px 10px; background: #FFFDF9; color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 900; text-transform: uppercase; cursor: pointer;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.pom-scope-btn.active { background: var(--ink); color: var(--gold); box-shadow: 3px 3px 0 var(--retro-pink); }
+.pom-my-card { background: linear-gradient(180deg, #FFFDF9 0%, #FFF7D6 100%); }
+.pom-my-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.pom-my-head .pom-h2 { margin-top: 8px; margin-bottom: 0; }
+.pom-my-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.pom-my-grid div {
+  border: 2px solid var(--ink); border-radius: 14px; background: #fff; padding: 10px 12px;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.pom-my-grid span { display: block; color: var(--ink-soft); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.04em; }
+.pom-my-grid strong { display: block; margin-top: 2px; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; line-height: 1; color: var(--ink); }
+.pom-my-motivator { margin-top: 12px !important; margin-bottom: 0 !important; font-weight: 800; color: var(--sunset-deep); }
 
 .pom-card {
-  background: var(--paper); border: 2px solid var(--line); border-radius: 20px;
-  padding: 18px; margin-bottom: 14px; box-shadow: 0 3px 0 rgba(61,43,82,0.06);
+  background: var(--paper); border: 3px solid var(--line); border-radius: 18px;
+  padding: 18px; margin-bottom: 14px; box-shadow: 5px 5px 0 rgba(31,27,22,0.92);
 }
 .pom-narrow { max-width: 380px; margin-left: auto; margin-right: auto; }
 .pom-center { text-align: center; }
@@ -1287,16 +1532,30 @@ body {
 
 .pom-acts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .pom-act {
-  border: 2px solid var(--line); border-radius: 16px; background: #fff; cursor: pointer;
+  border: 3px solid var(--line); border-radius: 16px; background: #fff; cursor: pointer;
   padding: 12px 10px; display: flex; flex-direction: column; align-items: center; gap: 4px;
-  font-family: inherit; transition: transform 0.08s ease;
+  font-family: inherit; transition: transform 0.08s ease, box-shadow 0.08s ease;
+  box-shadow: 3px 3px 0 var(--ink);
 }
-.pom-act:hover { transform: translateY(-2px); }
-.pom-act.active { border-color: var(--sunset); background: #FFF0E0; box-shadow: 0 3px 0 var(--sunset); }
+.pom-act:hover { transform: translate(-1px, -2px); box-shadow: 5px 5px 0 var(--ink); }
+.pom-act.active { border-color: var(--ink); background: #FFF0E0; box-shadow: 4px 4px 0 var(--sunset); }
 .pom-act-icon { font-size: 26px; }
 .pom-act-label { font-weight: 800; font-size: 14px; text-align: center; }
 .pom-act-pts { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: var(--sunset-deep); }
 .pom-act-blurb { color: var(--ink-soft); font-size: 13px; margin: 10px 0; }
+.pom-why-toggle {
+  width: 100%; margin: 4px 0 2px; border: 2px solid var(--ink); border-radius: 10px;
+  background: #FFF3BF; color: var(--ink); font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em;
+  padding: 10px 12px; cursor: pointer; box-shadow: 3px 3px 0 var(--ink);
+}
+.pom-why-toggle:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.pom-why-box {
+  margin-top: 12px; padding: 12px 14px; border: 2px dashed var(--ink); border-radius: 12px;
+  background: #FFF9DB; color: var(--ink); font-size: 13px; line-height: 1.45;
+}
+.pom-why-box ul { margin: 8px 0 0; padding-left: 18px; }
+.pom-why-box li { margin: 5px 0; }
 
 .pom-squad-row { display: flex; gap: 8px; }
 .pom-squad-row .pom-input { margin-bottom: 0; }
@@ -1384,15 +1643,16 @@ body {
 .pom-tabs {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
   display: flex; justify-content: center; gap: 6px;
-  background: rgba(255,253,249,0.96); border-top: 2px solid var(--line);
+  background: rgba(255,247,214,0.97); border-top: 3px solid var(--line);
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
   backdrop-filter: blur(6px);
 }
 .pom-tab {
-  border: 0; background: none; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700;
-  font-size: 15px; padding: 10px 18px; border-radius: 999px; cursor: pointer; color: var(--ink-soft);
+  border: 2px solid var(--ink); background: #fff; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800;
+  font-size: 15px; padding: 10px 18px; border-radius: 999px; cursor: pointer; color: var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
 }
-.pom-tab.active { background: var(--ink); color: #fff; }
+.pom-tab.active { background: var(--ink); color: var(--gold); }
 .pom-tab:focus-visible, .pom-mash:focus-visible, .pom-act:focus-visible, .pom-btn-primary:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 
 .pom-mode-row, .pom-preset-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
@@ -1458,13 +1718,15 @@ body {
 .pom-gila-photo { display: block; width: 140px; border-radius: 10px; margin-top: 10px; }
 
 @media (max-width: 420px) {
-  .pom-title { font-size: 32px; }
+  .pom-title { font-size: 33px; }
+  .pom-header { box-shadow: 5px 5px 0 var(--ink); }
+  .pom-ticker { font-size: 11px; }
   .pom-acts { grid-template-columns: 1fr 1fr; }
   .pom-quests { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pom-peak, .pom-act, .pom-mash { transition: none; }
-  .pom-spinner { animation: none; }
+  .pom-spinner, .pom-ticker-track { animation: none; }
 }
 `}</style>
   );
@@ -1497,8 +1759,15 @@ export default function PointOMatic() {
       <PomStyles />
       <RosterDatalist />
       <header className="pom-header">
+        <div className="pom-kicker">UA IM House Cup</div>
         <h1 className="pom-title">POINT-O-MATIC</h1>
-        <p className="pom-tag">Welcome Residents · Log your points · Be well · Touch grass · Do good work</p>
+        <p className="pom-tag">Welcome Residents · Log your points</p>
+        <div className="pom-ticker" aria-label="Point-O-Matic ticker">
+          <div className="pom-ticker-track">
+            <span>Log your points</span><span>Be well</span><span>Touch grass</span><span>Do good work</span><span>Hydrate</span><span>Submit evidence</span>
+            <span>Log your points</span><span>Be well</span><span>Touch grass</span><span>Do good work</span><span>Hydrate</span><span>Submit evidence</span>
+          </div>
+        </div>
       </header>
 
       {tab === "earn" && <EarnTab challenges={challenges} monsoon={monsoon} />}
