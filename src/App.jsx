@@ -239,10 +239,10 @@ const ACTIVITIES = [
   },
   {
     id: "points_request",
-    label: "Points request",
+    label: "Make a case",
     points: 1,
-    icon: "🙋",
-    blurb: "Low-proof discretionary ask. Pick 1–10 pts, explain the lore, photo optional.",
+    icon: "📝",
+    blurb: "Low-proof ask. Request 1–10 pts, explanation required, photo optional.",
     lowProof: true,
   },
   {
@@ -506,6 +506,7 @@ function EarnTab(props) {
   const [photoPreview, setPhotoPreview] = useState("");
   const [photoStatus, setPhotoStatus] = useState("");
   const [status, setStatus] = useState("");
+  const [receiptMsg, setReceiptMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [burst, setBurst] = useState(null);
   const mashRef = useRef(null);
@@ -586,7 +587,7 @@ function EarnTab(props) {
   async function mash() {
     if (readyReason || busy) return;
     setBusy(true);
-    setStatus("Uploading… compressed photos make this much faster.");
+    setStatus("Uploading… hang tight.");
     const submissionId = makeSubmissionId(activityId || "points");
     try {
       if (isShout) {
@@ -634,6 +635,7 @@ function EarnTab(props) {
         setBurst({ points: displayPoints, label: "House " + me.house + crewNote });
       }
       launchConfetti(mashRef.current);
+      setReceiptMsg("Receipt " + submissionId + " sent · Glory usually updates in a few seconds.");
       setStatus("done");
       setActivityId("");
       setSquad([]);
@@ -644,6 +646,7 @@ function EarnTab(props) {
       clearPhoto();
       setTimeout(function fade() { setBurst(null); setStatus(""); }, 3200);
     } catch (err) {
+      setReceiptMsg("");
       setStatus("That mash didn't land — check your connection and mash again.");
     } finally {
       setBusy(false);
@@ -707,7 +710,7 @@ function EarnTab(props) {
           })}
           <button
             type="button"
-            className={"pom-act pom-info-act " + (showWhy ? "active" : "")}
+            className={"pom-act pom-info-act pom-act-wide " + (showWhy ? "active" : "")}
             onClick={function toggleWhy() { setShowWhy(!showWhy); }}
           >
             <span className="pom-act-icon">🤔</span>
@@ -847,7 +850,8 @@ function EarnTab(props) {
         </button>
         {readyReason && <p className="pom-mash-hint">{readyReason}</p>}
         {status && status !== "done" && <p className={status.indexOf("Upload") === 0 ? "pom-ok" : "pom-error"}>{status}</p>}
-        <p className="pom-raffle-note">🎟️ Every mash = 1 ticket in this month's gift card raffle. Points optional, tickets guaranteed.</p>
+        {receiptMsg && <p className="pom-ok">{receiptMsg}</p>}
+        <p className="pom-raffle-note">🎟️ Every mash = 1 ticket in this month's gift card raffle.</p>
       </div>
     </div>
   );
@@ -1149,6 +1153,12 @@ function ChiefTab() {
   const [spEnd, setSpEnd] = useState("");
   const [spMsg, setSpMsg] = useState("");
 
+  // Announcement
+  const [anTitle, setAnTitle] = useState("");
+  const [anBody, setAnBody] = useState("");
+  const [anEnd, setAnEnd] = useState("");
+  const [anMsg, setAnMsg] = useState("");
+
   // Shout-out judging
   const [shoutFeed, setShoutFeed] = useState([]);
 
@@ -1236,6 +1246,21 @@ function ChiefTab() {
     setChTitle("");
   }
 
+  async function postAnnouncement() {
+    if (!anTitle.trim() && !anBody.trim()) { setAnMsg("Give the dispatch a title or message."); return; }
+    await postToBackend({
+      action: "setAnnouncement",
+      chief: chiefName,
+      pass: chiefPass,
+      title: anTitle.trim(),
+      body: anBody.trim(),
+      endDate: anEnd,
+    });
+    setAnMsg("📣 Desert Dispatch posted. It goes live for residents on their next refresh.");
+    setAnTitle("");
+    setAnBody("");
+  }
+
   if (!authed) {
     return (
       <div className="pom-card pom-narrow">
@@ -1297,7 +1322,7 @@ function ChiefTab() {
 
       <section className="pom-card">
         <h2 className="pom-h2">Rotate the quests</h2>
-        <p className="pom-hint">Sets the wellness or photo challenge every resident sees on the Earn tab.</p>
+        <p className="pom-hint">Sets the wellness or photo challenge every resident sees on the Earn tab. Easiest way to edit: just post a new one here — the latest unexpired quest wins automatically, so you never need to delete the old rows.</p>
         <select className="pom-input" value={chType} onChange={function onT(e) { setChType(e.target.value); }}>
           <option value="wellness">🌵 Wellness quest</option>
           <option value="photo">📸 Photo quest</option>
@@ -1313,6 +1338,17 @@ function ChiefTab() {
         <input id="pom-ch-end" className="pom-input" type="date" value={chEnd} onChange={function onE(e) { setChEnd(e.target.value); }} />
         <button type="button" className="pom-btn-primary" onClick={setChallenge}>Set the quest</button>
         {chMsg && <p className="pom-ok">{chMsg}</p>}
+      </section>
+
+      <section className="pom-card">
+        <h2 className="pom-h2">📣 Desert Dispatch</h2>
+        <p className="pom-hint">Chief-selected announcement banner for the Earn and Glory tabs. Good for the current house-selected activity, bonus pushes, or lounge propaganda.</p>
+        <input className="pom-input" placeholder="Headline (e.g., Catalina coffee cartel hour)" value={anTitle} onChange={function onTi(e) { setAnTitle(e.target.value); }} />
+        <textarea className="pom-input pom-textarea" rows={3} placeholder="Message (optional but encouraged)" value={anBody} onChange={function onBo(e) { setAnBody(e.target.value); }} />
+        <label className="pom-hint" htmlFor="pom-an-end">Dispatch ends (optional)</label>
+        <input id="pom-an-end" className="pom-input" type="date" value={anEnd} onChange={function onAn(e) { setAnEnd(e.target.value); }} />
+        <button type="button" className="pom-btn-primary" onClick={postAnnouncement}>Post the dispatch</button>
+        {anMsg && <p className="pom-ok">{anMsg}</p>}
       </section>
 
       <section className="pom-card">
@@ -1421,12 +1457,28 @@ function PomStyles() {
 html, body, #root { margin: 0; padding: 0; }
 body {
   background:
-    radial-gradient(circle at 18px 18px, rgba(31,27,22,0.08) 2px, transparent 3px),
-    linear-gradient(180deg, #FFD166 0%, #FFE0A3 210px, #FFF3DA 100%);
-  background-size: 28px 28px, 100% 100%;
+    radial-gradient(circle at 14% 12%, rgba(255,230,109,0.46), transparent 20%),
+    radial-gradient(circle at 86% 8%, rgba(255,77,141,0.14), transparent 18%),
+    linear-gradient(180deg, #FFF5D6 0%, #FFE0A3 28%, #FFD0A8 55%, #FFF4E5 100%);
   color: var(--ink);
   font-family: 'Nunito Sans', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+body::before {
+  content: "";
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  height: 34vh;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, transparent 0%, rgba(255,255,255,0) 18%),
+    linear-gradient(0deg, rgba(31,27,22,0.10), rgba(31,27,22,0.10)),
+    linear-gradient(135deg, transparent 36%, rgba(121, 74, 30, 0.10) 36% 46%, transparent 46%),
+    linear-gradient(225deg, transparent 34%, rgba(121, 74, 30, 0.12) 34% 48%, transparent 48%),
+    linear-gradient(180deg, transparent 0%, rgba(217,72,15,0.08) 100%);
+  clip-path: polygon(0 100%, 0 68%, 12% 60%, 21% 67%, 33% 50%, 44% 63%, 55% 42%, 67% 61%, 79% 49%, 89% 58%, 100% 46%, 100% 100%);
+  z-index: -1;
 }
 .pom-shell { max-width: 640px; margin: 0 auto; padding: 20px 16px 120px; }
 .pom-header {
@@ -1438,8 +1490,9 @@ body {
   border: 3px solid var(--ink);
   border-radius: 22px;
   background:
-    linear-gradient(135deg, rgba(255,255,255,0.55), transparent 42%),
-    linear-gradient(180deg, #FFF7D6 0%, #FFD166 100%);
+    linear-gradient(135deg, rgba(255,255,255,0.65), transparent 40%),
+    radial-gradient(circle at 82% 24%, rgba(255,230,109,0.75), transparent 18%),
+    linear-gradient(180deg, #FFF7D6 0%, #FFD89A 56%, #FFC078 100%);
   box-shadow: 7px 7px 0 var(--ink);
 }
 .pom-header::before {
@@ -1523,12 +1576,18 @@ body {
   to { transform: translateX(-50%); }
 }
 .pom-webmaster {
-  position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; margin-top: 10px;
-  border: 2px solid var(--ink); border-radius: 999px; padding: 7px 12px; background: #fff;
+  position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px;
+  border: 2px solid var(--ink); border-radius: 999px; padding: 8px 13px; background: linear-gradient(180deg, #fff 0%, #FFF3BF 100%);
   color: var(--ink); text-decoration: none; font-size: 12px; font-weight: 900;
   box-shadow: 3px 3px 0 var(--ink); text-transform: uppercase; letter-spacing: 0.02em;
 }
 .pom-webmaster:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.pom-dispatch {
+  margin: 0 0 14px; padding: 12px 14px; border: 3px solid var(--ink); border-radius: 16px;
+  background: linear-gradient(135deg, #FFF3BF 0%, #FFE8CC 100%); box-shadow: 4px 4px 0 rgba(31,27,22,0.9);
+}
+.pom-dispatch strong { display: block; margin-bottom: 3px; font-size: 14px; }
+.pom-dispatch span { color: var(--ink-soft); font-size: 13px; }
 
 .pom-quarter-card {
   background:
@@ -1629,6 +1688,7 @@ body {
 .pom-act:hover { transform: translate(-1px, -2px); box-shadow: 5px 5px 0 var(--ink); }
 .pom-act.active { border-color: var(--ink); background: #FFF0E0; box-shadow: 4px 4px 0 var(--sunset); }
 .pom-info-act { background: #FFF3BF; }
+.pom-act-wide { grid-column: 1 / -1; max-width: 240px; width: 100%; justify-self: center; }
 .pom-act-icon { font-size: 26px; }
 .pom-act-label { font-weight: 800; font-size: 14px; text-align: center; }
 .pom-act-pts { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: var(--sunset-deep); }
@@ -1823,6 +1883,7 @@ export default function PointOMatic() {
   const [tab, setTab] = useState("earn");
   const [challenges, setChallenges] = useState(FALLBACK_CHALLENGES);
   const [monsoon, setMonsoon] = useState(null);
+  const [announcement, setAnnouncement] = useState(null);
 
   useEffect(function loadChallenges() {
     fetchSummary()
@@ -1835,6 +1896,7 @@ export default function PointOMatic() {
           });
         }
         if (json && json.monsoon) setMonsoon(json.monsoon);
+        if (json && json.announcement) setAnnouncement(json.announcement);
       })
       .catch(function quiet() { /* fallback quests stay up */ });
   }, []);
@@ -1853,8 +1915,15 @@ export default function PointOMatic() {
             <span>Log your points</span><span>Be well</span><span>Touch grass</span><span>Do good work</span><span>Hydrate</span><span>Submit evidence</span>
           </div>
         </div>
-        <a className="pom-webmaster" href={"mailto:" + WEBMASTER_EMAIL + "?subject=Point-O-Matic%20help%20/%20bug%20report"}>✉️ Email webmaster</a>
+        <a className="pom-webmaster" href={"mailto:" + WEBMASTER_EMAIL + "?subject=Point-O-Matic%20help%20/%20bug%20report"}>📮 Holler at the webmaster</a>
       </header>
+
+      {announcement && (
+        <div className="pom-dispatch">
+          <strong>📣 {announcement.title || "Desert Dispatch"}</strong>
+          <span>{announcement.body || ""}{announcement.endDate ? (announcement.body ? " · " : "") + "through " + announcement.endDate : ""}</span>
+        </div>
+      )}
 
       {tab === "earn" && <EarnTab challenges={challenges} monsoon={monsoon} />}
       {tab === "glory" && <GloryTab />}
