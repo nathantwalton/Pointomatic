@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 /* =====================================================================
-   POINT-O-MATIC v3 — House Cup point logger
+   POINT-O-MATIC v2 — House Cup point logger
    Banner–University Medical Center Tucson · Internal Medicine
    Frontend: Vite + React (this file is the whole app)
    Backend: Google Apps Script web app (Code.gs v2) + Google Sheet
@@ -1604,7 +1604,13 @@ async function fetchSummary(period, userName) {
   const params = new URLSearchParams({ action: "summary" });
   if (period) params.set("period", period);
   if (userName) params.set("user", userName);
-  const res = await fetch(APPS_SCRIPT_WEB_APP_URL + "?" + params.toString(), { method: "GET" });
+  // Cache-bust the Apps Script summary so quest changes from Chief Lair show up
+  // immediately on resident devices instead of waiting for browser/proxy cache.
+  params.set("_", String(Date.now()));
+  const res = await fetch(APPS_SCRIPT_WEB_APP_URL + "?" + params.toString(), {
+    method: "GET",
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Summary request failed: " + res.status);
   return res.json();
 }
@@ -2325,7 +2331,7 @@ function GloryTab() {
 
 /* ------------------------- Chief tab ------------------------- */
 
-function ChiefTab() {
+function ChiefTab(props) {
   const [chiefName, setChiefName] = useState("");
   const [chiefPass, setChiefPass] = useState("");
   const [chiefFieldsUnlocked, setChiefFieldsUnlocked] = useState(false);
@@ -2537,7 +2543,15 @@ function ChiefTab() {
         notes: cleanNote,
         description: cleanNote,
       });
-      setChMsg("Quest set: " + cleanTitle + " (" + cleanPoints + " pts). It goes live for residents on their next load." + (bankCopy ? " Launch copy is ready below — paste it in the group chat." : ""));
+      if (props && typeof props.onQuestSaved === "function") {
+        props.onQuestSaved(chType, {
+          title: cleanTitle,
+          points: cleanPoints,
+          endDate: chEnd,
+          note: cleanNote,
+        });
+      }
+      setChMsg("Quest set: " + cleanTitle + " (" + cleanPoints + " pts). It should update on the Earn tab now; residents may need a refresh if their phone cached the app." + (bankCopy ? " Launch copy is ready below — paste it in the group chat." : ""));
       setChTitle("");
       setChNote("");
       setBankPick("");
@@ -3360,20 +3374,26 @@ export default function PointOMatic() {
   const [monsoon, setMonsoon] = useState(null);
   const [announcement, setAnnouncement] = useState(null);
 
-  useEffect(function loadChallenges() {
+  function applySummary(json) {
+    if (json && json.challenges) {
+      setChallenges({
+        wellness: json.challenges.wellness || FALLBACK_CHALLENGES.wellness,
+        photo: json.challenges.photo || FALLBACK_CHALLENGES.photo,
+        bounty: json.challenges.bounty || null,
+      });
+    }
+    if (json && json.monsoon) setMonsoon(json.monsoon);
+    if (json && json.announcement) setAnnouncement(json.announcement);
+  }
+
+  function reloadLiveChallenges() {
     fetchSummary()
-      .then(function ok(json) {
-        if (json && json.challenges) {
-          setChallenges({
-            wellness: json.challenges.wellness || FALLBACK_CHALLENGES.wellness,
-            photo: json.challenges.photo || FALLBACK_CHALLENGES.photo,
-            bounty: json.challenges.bounty || null,
-          });
-        }
-        if (json && json.monsoon) setMonsoon(json.monsoon);
-        if (json && json.announcement) setAnnouncement(json.announcement);
-      })
+      .then(function ok(json) { applySummary(json); })
       .catch(function quiet() { /* fallback quests stay up */ });
+  }
+
+  useEffect(function loadChallenges() {
+    reloadLiveChallenges();
   }, []);
 
   return (
@@ -3417,7 +3437,12 @@ export default function PointOMatic() {
 
       {tab === "earn" && <EarnTab challenges={challenges} monsoon={monsoon} />}
       {tab === "glory" && <GloryTab />}
-      {tab === "chiefs" && <ChiefTab />}
+      {tab === "chiefs" && <ChiefTab onQuestSaved={function localQuestSaved(type, quest) {
+        setChallenges(function previous(current) {
+          return Object.assign({}, current, { [type]: quest });
+        });
+        window.setTimeout(reloadLiveChallenges, 1500);
+      }} />}
 
       <nav className="pom-tabs" aria-label="Main">
         <button type="button" className={"pom-tab " + (tab === "earn" ? "active" : "")} onClick={function t1() { setTab("earn"); }}>🌵 Earn</button>
