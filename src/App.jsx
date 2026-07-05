@@ -14,7 +14,7 @@ const GOOGLE_EVIDENCE_FOLDER_URL = "https://drive.google.com/drive/folders/15zhX
 // Paste your deployed Google Apps Script Web App /exec URL here after deployment.
 const APPS_SCRIPT_WEB_APP_URL =
   (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_APPS_SCRIPT_WEB_APP_URL) ||
-  "https://script.google.com/macros/s/AKfycbwH7FewQU9myqnVFc795uFnonEHV7-ytRmgc5g1V-7WG2gYeYjdhHUBRfl2t4KTAMlh/exec";
+  "https://script.google.com/macros/s/AKfycbyO1HJ0dokejC574nuUeMdPgQcrMAcrXXVpG6ZnLCT3SNAAyze6XYtlafqsXCEbyiE/exec";
 
 const HOUSES = ["Catalina", "Rincon", "Santa Rita", "Tortolita", "Tucson"];
 
@@ -2326,15 +2326,18 @@ function GloryTab() {
 
       <section className="pom-card">
         <h2 className="pom-h2">⭐ Wall of Fame</h2>
-        <p className="pom-hint">Recent All-Star shout-outs. Best one each month wins prizes for the nominee <em>and</em> the nominator.</p>
+        <p className="pom-hint">Recent All-Star shout-outs — <strong>all submitted anonymously</strong>. Best one each month wins prizes for the nominee <em>and</em> the secret nominator.</p>
         {shoutouts.length === 0 && <p className="pom-hint">No shout-outs yet. Someone near you deserves the glory — and the nominator's house deserves 2 points.</p>}
         <ul className="pom-fame">
           {shoutouts.map(function sh(s, i) {
             const color = HOUSE_COLORS[s.house] || "#888";
+            // Scrub any legacy "From X: " prefix so older backend deployments can't leak the sender.
+            const reason = String(s.note || "").replace(/^From\s+[^:]{1,50}:\s*/, "");
             return (
               <li key={i}>
                 <span className="pom-fame-to" style={{ color: color }}>⭐ {s.to}</span>
-                <span className="pom-fame-note">{s.note}</span>
+                <span className="pom-fame-note">{reason}</span>
+                <span className="pom-fame-anon">— a secret admirer 🎭</span>
               </li>
             );
           })}
@@ -2433,6 +2436,9 @@ function ChiefTab(props) {
       setAuthed(true);
       setLoginMsg("");
       fetchSummary().then(function ok(json) { setShoutFeed((json && json.recentShoutouts) || []); }).catch(function quiet() {});
+      chiefGet("shoutoutBench", chiefPass)
+        .then(function ok(json) { if (json && json.ok && json.shoutouts) setShoutFeed(json.shoutouts); })
+        .catch(function quiet() { /* older deployment: keep the anonymous summary feed */ });
       chiefGet("questLibrary", chiefPass)
         .then(function ok(json) {
           if (json && json.ok && json.library && (json.library.wellness || json.library.photo || json.library.bounty)) {
@@ -2824,14 +2830,15 @@ function ChiefTab(props) {
 
       <section className="pom-card">
         <h2 className="pom-h2">⭐ All-Star of the Month bench</h2>
-        <p className="pom-hint">Recent shout-outs for judging. Pick the best-written one each month — prize the nominee <em>and</em> the nominator via Award points.</p>
+        <p className="pom-hint">Recent shout-outs for judging — nominators visible <strong>here only</strong> (the public Wall of Fame is anonymous). Pick the best-written one each month and prize the nominee <em>and</em> the nominator via Award points.</p>
         {shoutFeed.length === 0 && <p className="pom-hint">No shout-outs on the bench yet.</p>}
         <ul className="pom-fame">
           {shoutFeed.map(function sh(s, i) {
+            const reason = String(s.note || "").replace(/^From\s+[^:]{1,50}:\s*/, "");
             return (
               <li key={i}>
-                <span className="pom-fame-to" style={{ color: HOUSE_COLORS[s.house] || "#888" }}>⭐ {s.to}</span>
-                <span className="pom-fame-note">{s.note}</span>
+                <span className="pom-fame-to" style={{ color: HOUSE_COLORS[s.house] || "#888" }}>⭐ {s.to}{s.from ? <span className="pom-fame-from"> · nominated by {s.from}</span> : null}</span>
+                <span className="pom-fame-note">{reason}</span>
               </li>
             );
           })}
@@ -3295,6 +3302,8 @@ body::before {
 .pom-fame li:last-child { border-bottom: 0; }
 .pom-fame-to { font-weight: 800; font-size: 14px; }
 .pom-fame-note { color: var(--ink-soft); font-size: 13px; }
+.pom-fame-anon { color: var(--ink-soft); font-size: 11px; font-style: italic; opacity: 0.8; }
+.pom-fame-from { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
 
 .pom-draw-row { display: flex; flex-direction: column; gap: 10px; }
 .pom-btn-gila { background: linear-gradient(92deg, #E8590C, #F59F00); }
