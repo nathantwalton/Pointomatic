@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 /* =====================================================================
-   POINT-O-MATIC v2 — House Cup point logger
+   POINT-O-MATIC v3 — House Cup point logger
    Banner–University Medical Center Tucson · Internal Medicine
    Frontend: Vite + React (this file is the whole app)
    Backend: Google Apps Script web app (Code.gs v2) + Google Sheet
@@ -1321,8 +1321,8 @@ function ChiefTab() {
     return (
       <div className="pom-card pom-narrow">
         <h2 className="pom-h2">Secret Chief Lair</h2>
-        <input className="pom-input" placeholder="Chief name" value={chiefName} onChange={function onN(e) { setChiefName(e.target.value); }} autoComplete="off" />
-        <input className="pom-input" placeholder="Password" type="password" value={chiefPass} onChange={function onP(e) { setChiefPass(e.target.value); }} onKeyDown={function onK(e) { if (e.key === "Enter") login(); }} />
+        <input className="pom-input" placeholder="Name" value={chiefName} onChange={function onN(e) { setChiefName(e.target.value); }} autoComplete="off" />
+        <input className="pom-input" placeholder="get lost punk" type="password" value={chiefPass} onChange={function onP(e) { setChiefPass(e.target.value); }} onKeyDown={function onK(e) { if (e.key === "Enter") login(); }} />
         <button type="button" className="pom-btn-primary" onClick={login}>Enter the lair</button>
         {loginMsg && <p className="pom-error">{loginMsg}</p>}
       </div>
@@ -1629,7 +1629,7 @@ body::before {
   white-space: nowrap;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1643,17 +1643,43 @@ body::before {
   padding: 9px 18px;
   text-shadow: 0 0 8px rgba(47,238,104,0.72);
 }
+.pom-ticker-cactus {
+  display: none;
+}
 @keyframes pom-ticker-scroll {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
 }
 .pom-webmaster {
-  position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px;
+  position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin: 16px auto 18px;
   border: 2px solid var(--ink); border-radius: 999px; padding: 8px 13px; background: linear-gradient(180deg, #fff 0%, #FFF3BF 100%);
   color: var(--ink); text-decoration: none; font-size: 12px; font-weight: 900;
   box-shadow: 3px 3px 0 var(--ink); text-transform: uppercase; letter-spacing: 0.02em;
 }
 .pom-webmaster:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+@media (min-width: 760px) {
+  .pom-ticker-cactus {
+    display: flex;
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    background: var(--gold);
+    box-shadow: 2px 2px 0 var(--ink);
+    font-size: 20px;
+    line-height: 1;
+  }
+  .pom-ticker-track {
+    padding-left: 58px;
+  }
+}
 .pom-dispatch {
   margin: 0 0 14px; padding: 12px 14px; border: 3px solid var(--ink); border-radius: 16px;
   background: linear-gradient(135deg, #FFF3BF 0%, #FFE8CC 100%); box-shadow: 4px 4px 0 rgba(31,27,22,0.9);
@@ -1978,9 +2004,10 @@ body[data-pom-theme="retro"] .pom-kicker { font-family: 'Courier New', monospace
 body[data-pom-theme="retro"] .pom-tag { font-family: 'Courier New', monospace; font-weight: 700; }
 body[data-pom-theme="retro"] .pom-ticker { background: #000080; border-radius: 0; }
 body[data-pom-theme="retro"] .pom-ticker-track span { color: #00FF66; font-family: 'Courier New', monospace; }
+body[data-pom-theme="retro"] .pom-ticker-cactus { background: #FFEB3B; }
 
 .pom-counterbar {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; margin-top: 10px;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; margin-top: 2px;
   font-family: 'Courier New', monospace; font-size: 11px; font-weight: 700; color: #000080;
 }
 .pom-underconstruction { background: repeating-linear-gradient(45deg, #FFEB3B 0 8px, #111 8px 16px); color: #fff; text-shadow: 1px 1px 0 #000; padding: 2px 8px; }
@@ -2092,9 +2119,10 @@ export default function PointOMatic() {
         <h1 className="pom-title">POINT-O-MATIC</h1>
         <p className="pom-tag">Welcome Residents · Log your points</p>
         <div className="pom-ticker" aria-label="Point-O-Matic ticker">
+          <div className="pom-ticker-cactus" aria-hidden="true">🌵</div>
           <div className="pom-ticker-track">
-            <span>Log your points</span><span>Be well</span><span>Touch grass</span><span>Do good work</span><span>Hydrate</span><span>Submit evidence</span>
-            <span>Log your points</span><span>Be well</span><span>Touch grass</span><span>Do good work</span><span>Hydrate</span><span>Submit evidence</span>
+            <span>★ WELCOME RESIDENTS AND FACULTY ★ LOG YOUR POINTS ★ DO COOL STUFF ★ TOUCH GRASS ★ BE WELL ★&nbsp;</span>
+            <span aria-hidden="true">★ WELCOME RESIDENTS AND FACULTY ★ LOG YOUR POINTS ★ DO COOL STUFF ★ TOUCH GRASS ★ BE WELL ★&nbsp;</span>
           </div>
         </div>
         <a className="pom-webmaster" href={"mailto:" + WEBMASTER_EMAIL + "?subject=Point-O-Matic%20help%20/%20bug%20report"}>📮 Holler at the webmaster</a>
