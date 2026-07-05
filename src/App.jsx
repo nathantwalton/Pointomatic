@@ -14,7 +14,7 @@ const GOOGLE_EVIDENCE_FOLDER_URL = "https://drive.google.com/drive/folders/15zhX
 // Paste your deployed Google Apps Script Web App /exec URL here after deployment.
 const APPS_SCRIPT_WEB_APP_URL =
   (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_APPS_SCRIPT_WEB_APP_URL) ||
-  "https://script.google.com/macros/s/AKfycbz7ZQ1posPyy-_exlDJgCtbe-NG4wLDMTB2PdhBmXOfJR0xQB01RpZ2utkVsovlhPdr/exec";
+  "https://script.google.com/macros/s/AKfycbyO1HJ0dokejC574nuUeMdPgQcrMAcrXXVpG6ZnLCT3SNAAyze6XYtlafqsXCEbyiE/exec";
 
 const HOUSES = ["Catalina", "Rincon", "Santa Rita", "Tortolita", "Tucson"];
 
@@ -431,6 +431,14 @@ function recallName() {
   try { return window.localStorage.getItem("pom-name") || ""; } catch (e) { return ""; }
 }
 
+// Theme: "sunset" (default) or "retro" (GeoCities-era Point-O-Matic tribute). Persisted like the name.
+function rememberTheme(theme) {
+  try { window.localStorage.setItem("pom-theme", theme); } catch (e) { /* private mode etc. */ }
+}
+function recallTheme() {
+  try { return window.localStorage.getItem("pom-theme") || "sunset"; } catch (e) { return "sunset"; }
+}
+
 function launchConfetti(originEl) {
   if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const emojis = ["🌵", "☀️", "⭐", "🏔️", "🎉", "🌅"];
@@ -663,16 +671,19 @@ function EarnTab(props) {
       {bounty && (
         <div className="pom-bounty-banner">
           🔥 <strong>BOUNTY LIVE:</strong> {bounty.title} · <span className="pom-bounty-pts">{bounty.points} pts</span>{bounty.endDate ? " · closes " + bounty.endDate : ""}
+          {bounty.note && <span className="pom-bounty-note">{bounty.note}</span>}
         </div>
       )}
       <div className="pom-quests">
         <div className="pom-quest-card" style={{ borderColor: "#2F9E44" }}>
           <span className="pom-quest-kicker">🌵 Wellness quest · {(challenges.wellness && challenges.wellness.points) || 3} pts</span>
           <strong>{(challenges.wellness && challenges.wellness.title) || FALLBACK_CHALLENGES.wellness.title}</strong>
+          {challenges.wellness && challenges.wellness.note && <span className="pom-quest-note">{challenges.wellness.note}</span>}
         </div>
         <div className="pom-quest-card" style={{ borderColor: "#D6336C" }}>
           <span className="pom-quest-kicker">📸 Photo quest · {(challenges.photo && challenges.photo.points) || 3} pts</span>
           <strong>{(challenges.photo && challenges.photo.title) || FALLBACK_CHALLENGES.photo.title}</strong>
+          {challenges.photo && challenges.photo.note && <span className="pom-quest-note">{challenges.photo.note}</span>}
         </div>
       </div>
 
@@ -1136,7 +1147,14 @@ function ChiefTab() {
   const [chTitle, setChTitle] = useState("");
   const [chPoints, setChPoints] = useState(3);
   const [chEnd, setChEnd] = useState("");
+  const [chNote, setChNote] = useState("");
   const [chMsg, setChMsg] = useState("");
+
+  // Challenge Bank picker
+  const [bank, setBank] = useState(null);
+  const [bankPick, setBankPick] = useState("");
+  const [bankCopy, setBankCopy] = useState("");
+  const [bankMsg, setBankMsg] = useState("");
 
   // Draws
   const [raffleResult, setRaffleResult] = useState(null);
@@ -1167,7 +1185,42 @@ function ChiefTab() {
       setAuthed(true);
       setLoginMsg("");
       fetchSummary().then(function ok(json) { setShoutFeed((json && json.recentShoutouts) || []); }).catch(function quiet() {});
+      chiefGet("questLibrary", chiefPass)
+        .then(function ok(json) { if (json && json.ok) setBank(json.library); })
+        .catch(function quiet() { setBankMsg("Challenge Bank didn't load — free-type works fine, or reload the lair."); });
     } else setLoginMsg("Name or password doesn't match a chief. The password is the sacred one.");
+  }
+
+  // Bank entries for the currently selected quest type: canonical monthly rows first, then the rest.
+  const bankOptions = (function options() {
+    if (!bank || !bank[chType]) return [];
+    const list = bank[chType].slice();
+    list.sort(function order(a, b) {
+      const rank = function (s) { return String(s.section).indexOf("Monthly") === 0 ? 0 : String(s.section) === "Featured Quest Pool" ? 1 : String(s.section) === "Group Bounties" ? 2 : 3; };
+      return rank(a) - rank(b);
+    });
+    return list;
+  })();
+
+  function pickFromBank(index) {
+    setBankPick(index);
+    const q = bankOptions[Number(index)];
+    if (!q) return;
+    setChTitle(q.title);
+    setChPoints(q.points || 3);
+    setChNote(q.note || "");
+    setBankCopy(q.launchCopy || "");
+    setBankMsg(q.month ? q.section + " · " + q.month : q.section);
+  }
+
+  function copyLaunchCopy() {
+    if (!bankCopy) return;
+    try {
+      navigator.clipboard.writeText(bankCopy);
+      setBankMsg("Launch copy on the clipboard — paste it in the group chat.");
+    } catch (e) {
+      setBankMsg("Copy failed — select and copy the text manually.");
+    }
   }
 
   async function drawRaffle() {
@@ -1241,9 +1294,12 @@ function ChiefTab() {
       title: chTitle.trim(),
       points: Number(chPoints) || 3,
       endDate: chEnd,
+      note: chNote.trim(),
     });
-    setChMsg("Quest set: " + chTitle + " (" + chPoints + " pts). It goes live for residents on their next load.");
+    setChMsg("Quest set: " + chTitle + " (" + chPoints + " pts). It goes live for residents on their next load." + (bankCopy ? " Launch copy is ready below — paste it in the group chat." : ""));
     setChTitle("");
+    setChNote("");
+    setBankPick("");
   }
 
   async function postAnnouncement() {
@@ -1323,12 +1379,21 @@ function ChiefTab() {
       <section className="pom-card">
         <h2 className="pom-h2">Rotate the quests</h2>
         <p className="pom-hint">Sets the wellness or photo challenge every resident sees on the Earn tab. Easiest way to edit: just post a new one here — the latest unexpired quest wins automatically, so you never need to delete the old rows.</p>
-        <select className="pom-input" value={chType} onChange={function onT(e) { setChType(e.target.value); }}>
+        <select className="pom-input" value={chType} onChange={function onT(e) { setChType(e.target.value); setBankPick(""); setBankCopy(""); setBankMsg(""); }}>
           <option value="wellness">🌵 Wellness quest</option>
           <option value="photo">📸 Photo quest</option>
           <option value="bounty">🔥 Bounty (limited-time, big banner)</option>
         </select>
+        {bankOptions.length > 0 && (
+          <select className="pom-input pom-bank-select" value={bankPick} onChange={function onPick(e) { pickFromBank(e.target.value); }}>
+            <option value="">📚 Pick from the Challenge Bank ({bankOptions.length})…</option>
+            {bankOptions.map(function opt(q, i) {
+              return <option key={i} value={i}>{(q.month ? q.month + " — " : "") + q.title + " · " + q.points + " pts"}</option>;
+            })}
+          </select>
+        )}
         <input className="pom-input" placeholder="Quest title (e.g., Sunrise on Tumamoc)" value={chTitle} onChange={function onTi(e) { setChTitle(e.target.value); }} />
+        <input className="pom-input" placeholder="Helper note shown under the quest (optional)" value={chNote} onChange={function onNo(e) { setChNote(e.target.value); }} />
         <div className="pom-stepper-row">
           <button type="button" className="pom-step-btn" onClick={function dn() { setChPoints(Math.max(1, chPoints - 1)); }}>−</button>
           <span className="pom-step-val">{chPoints} pts</span>
@@ -1337,6 +1402,13 @@ function ChiefTab() {
         <label className="pom-hint" htmlFor="pom-ch-end">Quest ends (optional)</label>
         <input id="pom-ch-end" className="pom-input" type="date" value={chEnd} onChange={function onE(e) { setChEnd(e.target.value); }} />
         <button type="button" className="pom-btn-primary" onClick={setChallenge}>Set the quest</button>
+        {bankCopy && (
+          <div className="pom-launchcopy">
+            <span>📣 {bankCopy}</span>
+            <button type="button" className="pom-btn-secondary" onClick={copyLaunchCopy}>Copy for GroupMe</button>
+          </div>
+        )}
+        {bankMsg && <p className="pom-hint">{bankMsg}</p>}
         {chMsg && <p className="pom-ok">{chMsg}</p>}
       </section>
 
@@ -1677,6 +1749,15 @@ body::before {
   display: flex; flex-direction: column; gap: 4px; font-size: 14px;
 }
 .pom-quest-kicker { font-size: 11px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; color: var(--ink-soft); }
+.pom-quest-note { font-size: 12px; color: var(--ink-soft); font-weight: 600; }
+.pom-bounty-note { display: block; font-size: 12px; font-weight: 600; opacity: 0.92; margin-top: 4px; }
+.pom-bank-select { border-style: dashed; font-weight: 700; }
+.pom-launchcopy {
+  display: flex; align-items: center; gap: 10px; margin-top: 12px;
+  background: #FFF3BF; border: 2px dashed var(--gold); border-radius: 12px; padding: 10px 12px; font-size: 13px; font-weight: 600;
+}
+.pom-launchcopy span { flex: 1; }
+.pom-launchcopy .pom-btn-secondary { white-space: nowrap; }
 
 .pom-acts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .pom-act {
@@ -1862,6 +1943,94 @@ body::before {
 .pom-gila-result { background: #FFE8CC; border-color: #E8590C; }
 .pom-gila-photo { display: block; width: 140px; border-radius: 10px; margin-top: 10px; }
 
+.pom-theme-toggle {
+  position: absolute; top: 10px; right: 10px; z-index: 5;
+  border: 2px solid var(--ink); border-radius: 999px; background: var(--paper); color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 11px; letter-spacing: 0.5px;
+  padding: 6px 10px; cursor: pointer; box-shadow: 2px 2px 0 var(--ink);
+}
+.pom-theme-toggle:active { transform: translate(2px, 2px); box-shadow: none; }
+
+/* =====================================================================
+   RETRO MODE — a loving tribute to the original GeoCities-era
+   Point-O-Matic. Navy text, magenta WordArt, beveled buttons, and a
+   status bar that has been ONLINE since 1997.
+   ===================================================================== */
+@keyframes pom-blink { 50% { opacity: 0; } }
+.pom-blink { animation: pom-blink 1s step-start infinite; }
+
+body[data-pom-theme="retro"] {
+  --sky: #FFFDE7; --paper: #FFFEF0; --ink: #000080; --ink-soft: #334155;
+  --sunset: #D4006A; --sunset-deep: #D4006A; --gold: #FFEB3B; --line: #000080;
+  background: #FFFDE7 repeating-linear-gradient(0deg, transparent 0 22px, rgba(0,0,128,0.05) 22px 23px);
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+}
+body[data-pom-theme="retro"]::before { display: none; }
+
+body[data-pom-theme="retro"] .pom-header { border-radius: 0; border: 3px double #000080; box-shadow: 6px 6px 0 #000080; }
+body[data-pom-theme="retro"] .pom-header::before { display: none; }
+body[data-pom-theme="retro"] .pom-title {
+  font-family: Verdana, Geneva, Tahoma, sans-serif; font-weight: 900; text-transform: uppercase;
+  background: none; -webkit-text-fill-color: #D4006A; color: #D4006A;
+  text-shadow: 2px 2px 0 #fff, 4px 4px 0 #000;
+}
+body[data-pom-theme="retro"] .pom-kicker { font-family: 'Courier New', monospace; color: #000080; }
+body[data-pom-theme="retro"] .pom-tag { font-family: 'Courier New', monospace; font-weight: 700; }
+body[data-pom-theme="retro"] .pom-ticker { background: #000080; border-radius: 0; }
+body[data-pom-theme="retro"] .pom-ticker-track span { color: #00FF66; font-family: 'Courier New', monospace; }
+
+.pom-counterbar {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; margin-top: 10px;
+  font-family: 'Courier New', monospace; font-size: 11px; font-weight: 700; color: #000080;
+}
+.pom-underconstruction { background: repeating-linear-gradient(45deg, #FFEB3B 0 8px, #111 8px 16px); color: #fff; text-shadow: 1px 1px 0 #000; padding: 2px 8px; }
+.pom-online { color: #00A335; }
+.pom-bestviewed { color: #334155; }
+
+body[data-pom-theme="retro"] .pom-card,
+body[data-pom-theme="retro"] .pom-quest-card {
+  border-radius: 0; border: 2px solid #000080; box-shadow: 4px 4px 0 #000080; background: #FFFEF0;
+}
+body[data-pom-theme="retro"] .pom-h2, body[data-pom-theme="retro"] .pom-step {
+  font-family: Verdana, Geneva, Tahoma, sans-serif; text-transform: uppercase; letter-spacing: 0.5px; font-size: 17px;
+}
+body[data-pom-theme="retro"] .pom-input { border-radius: 0; border: 2px inset #d9d9d9; background: #fff; font-family: 'Courier New', monospace; font-weight: 700; }
+body[data-pom-theme="retro"] .pom-btn-primary, body[data-pom-theme="retro"] .pom-btn-secondary {
+  border-radius: 0; border: 3px outset #d9d9d9; background: #FFEB3B; color: #000080;
+  font-family: Verdana, Geneva, Tahoma, sans-serif; text-transform: uppercase; box-shadow: none;
+}
+body[data-pom-theme="retro"] .pom-btn-primary:active, body[data-pom-theme="retro"] .pom-btn-secondary:active { border-style: inset; }
+
+body[data-pom-theme="retro"] .pom-act { border-radius: 0; border: 2px solid #000080; box-shadow: 3px 3px 0 #000080; }
+body[data-pom-theme="retro"] .pom-act:nth-child(6n+1) { background: #FFD6EF; }
+body[data-pom-theme="retro"] .pom-act:nth-child(6n+2) { background: #FFF7B8; }
+body[data-pom-theme="retro"] .pom-act:nth-child(6n+3) { background: #D6F5FF; }
+body[data-pom-theme="retro"] .pom-act:nth-child(6n+4) { background: #E3FFD6; }
+body[data-pom-theme="retro"] .pom-act:nth-child(6n+5) { background: #FFE0BD; }
+body[data-pom-theme="retro"] .pom-act:nth-child(6n+6) { background: #EAD6FF; }
+body[data-pom-theme="retro"] .pom-act.active { outline: 3px dashed #D4006A; outline-offset: 2px; }
+body[data-pom-theme="retro"] .pom-act-pts { font-family: 'Courier New', monospace; color: #D4006A; }
+
+body[data-pom-theme="retro"] .pom-mash {
+  border-radius: 0; background: #D4006A; font-family: Verdana, Geneva, Tahoma, sans-serif;
+  border: 4px outset #ff9ccb; box-shadow: 8px 8px 0 #000080;
+}
+body[data-pom-theme="retro"] .pom-mash:active { border-style: inset; transform: translate(4px, 4px); box-shadow: 4px 4px 0 #000080; }
+body[data-pom-theme="retro"] .pom-mash-sub { font-family: 'Courier New', monospace; }
+body[data-pom-theme="retro"] .pom-mash:not(.locked):not(:disabled) .pom-mash-sub { animation: pom-blink 1.4s step-start infinite; }
+
+body[data-pom-theme="retro"] .pom-tabs { background: #000080; border-top: 3px double #FFEB3B; }
+body[data-pom-theme="retro"] .pom-tab { color: #FFFDE7; font-family: 'Courier New', monospace; font-weight: 700; border-radius: 0; }
+body[data-pom-theme="retro"] .pom-tab.active { background: #FFEB3B; color: #000080; }
+
+body[data-pom-theme="retro"] .pom-polaroid { border-radius: 0; transform: none; }
+body[data-pom-theme="retro"] .pom-monsoon, body[data-pom-theme="retro"] .pom-bounty-banner { border-radius: 0; box-shadow: 4px 4px 0 #000080; }
+body[data-pom-theme="retro"] .pom-theme-toggle { border-radius: 0; background: #00FF66; border: 2px outset #d9d9d9; color: #000; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pom-blink, body[data-pom-theme="retro"] .pom-mash-sub { animation: none; }
+}
+
 @media (max-width: 420px) {
   .pom-title { font-size: 33px; }
   .pom-header { box-shadow: 5px 5px 0 var(--ink); }
@@ -1881,6 +2050,11 @@ body::before {
 
 export default function PointOMatic() {
   const [tab, setTab] = useState("earn");
+  const [theme, setTheme] = useState(recallTheme());
+
+  useEffect(function applyTheme() {
+    document.body.setAttribute("data-pom-theme", theme);
+  }, [theme]);
   const [challenges, setChallenges] = useState(FALLBACK_CHALLENGES);
   const [monsoon, setMonsoon] = useState(null);
   const [announcement, setAnnouncement] = useState(null);
@@ -1906,6 +2080,14 @@ export default function PointOMatic() {
       <PomStyles />
       <RosterDatalist />
       <header className="pom-header">
+        <button
+          type="button"
+          className="pom-theme-toggle"
+          onClick={function flip() { const next = theme === "retro" ? "sunset" : "retro"; setTheme(next); rememberTheme(next); }}
+          aria-label="Switch theme"
+        >
+          {theme === "retro" ? "🌅 SUNSET MODE" : "🕹️ RETRO MODE"}
+        </button>
         <div className="pom-kicker">UA IM House Cup</div>
         <h1 className="pom-title">POINT-O-MATIC</h1>
         <p className="pom-tag">Welcome Residents · Log your points</p>
@@ -1916,6 +2098,13 @@ export default function PointOMatic() {
           </div>
         </div>
         <a className="pom-webmaster" href={"mailto:" + WEBMASTER_EMAIL + "?subject=Point-O-Matic%20help%20/%20bug%20report"}>📮 Holler at the webmaster</a>
+        {theme === "retro" && (
+          <div className="pom-counterbar">
+            <span className="pom-underconstruction">🚧 UNDER CONSTRUCTION SINCE 1997 🚧</span>
+            <span>Status: <span className="pom-blink pom-online">● ONLINE</span></span>
+            <span className="pom-bestviewed">Best viewed at 800×600</span>
+          </div>
+        )}
       </header>
 
       {announcement && (
