@@ -14,7 +14,7 @@ const GOOGLE_EVIDENCE_FOLDER_URL = "https://drive.google.com/drive/folders/15zhX
 // Paste your deployed Google Apps Script Web App /exec URL here after deployment.
 const APPS_SCRIPT_WEB_APP_URL =
   (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_APPS_SCRIPT_WEB_APP_URL) ||
-  "https://script.google.com/macros/s/AKfycbz7ZQ1posPyy-_exlDJgCtbe-NG4wLDMTB2PdhBmXOfJR0xQB01RpZ2utkVsovlhPdr/exec";
+  "https://script.google.com/macros/s/AKfycbyO1HJ0dokejC574nuUeMdPgQcrMAcrXXVpG6ZnLCT3SNAAyze6XYtlafqsXCEbyiE/exec";
 
 const HOUSES = ["Catalina", "Rincon", "Santa Rita", "Tortolita", "Tucson"];
 
@@ -255,10 +255,10 @@ const ACTIVITIES = [
   },
   {
     id: "points_request",
-    label: "Make a case",
+    label: "Tell me why I should give you points?",
     points: 1,
     icon: "📝",
-    blurb: "Low-proof ask. Request 1–10 pts, explanation required, photo optional.",
+    blurb: "For unsanctioned excellence and suspiciously wholesome nonsense.",
     lowProof: true,
   },
   {
@@ -1960,7 +1960,7 @@ function EarnTab(props) {
               <span id="pom-request-points" className="pom-step-val">{requestedPoints} pt{requestedPoints === 1 ? "" : "s"}</span>
               <button type="button" className="pom-step-btn" onClick={function up() { setRequestedPoints(Math.min(10, requestedPoints + 1)); }}>+</button>
             </div>
-            <p className="pom-hint">Low-proof mode: photo optional, explanation required. Chiefs can adjust later if the desert math is suspicious.</p>
+            <p className="pom-hint">Low-proof mode: photo optional, explanation required. Chiefs can adjust later if the math is suspicious.</p>
           </div>
         )}
       </section>
@@ -2037,7 +2037,7 @@ function EarnTab(props) {
           {!isShout && (
             <input
               className="pom-input"
-              placeholder={isPointsRequest ? "Required: why should chiefs award these points?" : activity && activity.id === "optional_quest" ? "Required: which optional quest/bounty did you complete?" : activity && activity.id === "wellness_event" ? "Required: Shubitz/CUP, group self-care, community engagement, service, etc." : "Optional note (where, what, lore…)"}
+              placeholder={isPointsRequest ? "Required: tell me why I should give you points." : activity && activity.id === "optional_quest" ? "Required: which optional quest/bounty did you complete?" : activity && activity.id === "wellness_event" ? "Required: Shubitz/CUP, group self-care, community engagement, service, etc." : "Optional note (where, what, lore…)"}
               value={note}
               onChange={function onNote(e) { setNote(e.target.value); }}
             />
