@@ -14,7 +14,7 @@ const GOOGLE_EVIDENCE_FOLDER_URL = "https://drive.google.com/drive/folders/15zhX
 // Paste your deployed Google Apps Script Web App /exec URL here after deployment.
 const APPS_SCRIPT_WEB_APP_URL =
   (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_APPS_SCRIPT_WEB_APP_URL) ||
-  "https://script.google.com/macros/s/AKfycbxXoLjY8VaxMrWAUBk60ZmccFnZOPHSj3_eujzpMLEMBCgEahN9rWzGUQFyC75K4C6e/exec";
+  "https://script.google.com/macros/s/AKfycbwH7FewQU9myqnVFc795uFnonEHV7-ytRmgc5g1V-7WG2gYeYjdhHUBRfl2t4KTAMlh/exec";
 
 const HOUSES = ["Catalina", "Rincon", "Santa Rita", "Tortolita", "Tucson"];
 
@@ -1642,13 +1642,25 @@ async function saveChallengeToBackend(payload) {
     if (res.ok) {
       const json = await res.json();
       if (json && json.ok === false) throw new Error(json.error || "Backend rejected quest");
-      if (json && (json.ok === true || json.challenge || json.challenges)) return json;
+      // ONLY a real echo of the saved challenge counts as verified. A stale deployment
+      // answers unknown actions with a generic { ok: true, hint: ... } hello — that must
+      // NOT pass, or the app reports success while nothing was written.
+      if (json && json.challenge && json.challenge.title) return json;
     }
   } catch (err) {
     // Fall through to POST for older deployments.
   }
 
+  // Fallback: fire-and-forget POST, then verify by reading the live summary back.
   await postToBackend(payload);
+  try {
+    const check = await fetchSummary();
+    const type = String(payload.type || "");
+    const live = check && check.challenges && check.challenges[type];
+    if (live && live.title === String(payload.title || "").trim()) {
+      return { ok: true, challenge: live, verifiedVia: "summary" };
+    }
+  } catch (e) { /* verification read failed; report unverified below */ }
   return { ok: true, unverified: true };
 }
 
@@ -2582,7 +2594,11 @@ function ChiefTab(props) {
       if (props && typeof props.onQuestSaved === "function") {
         props.onQuestSaved(chType, savedQuest);
       }
-      setChMsg("Quest saved to the backend: " + cleanTitle + " (" + cleanPoints + " pts). Reloading should now keep it. If it still resets, redeploy Code.gs as a new web-app version." + (bankCopy ? " Launch copy is ready below — paste it in the group chat." : ""));
+      if (saved && saved.unverified) {
+        setChMsg("Quest sent, but the backend never confirmed the save — it will likely reset on reload. Almost always this means the live web app is running old code: open Apps Script → Deploy → Manage deployments → pencil → Version: New version → Deploy, then try again.");
+      } else {
+        setChMsg("Quest saved and verified live: " + savedQuest.title + " (" + savedQuest.points + " pts). Reload-proof." + (bankCopy ? " Launch copy is ready below — paste it in the group chat." : ""));
+      }
       setChTitle("");
       setChNote("");
       setBankPick("");
