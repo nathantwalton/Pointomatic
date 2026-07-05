@@ -14,7 +14,7 @@ const GOOGLE_EVIDENCE_FOLDER_URL = "https://drive.google.com/drive/folders/15zhX
 // Paste your deployed Google Apps Script Web App /exec URL here after deployment.
 const APPS_SCRIPT_WEB_APP_URL =
   (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_APPS_SCRIPT_WEB_APP_URL) ||
-  "https://script.google.com/macros/s/AKfycbyO1L66GhqGQ-ypEAFmHy5mMs9TDPyXZwRbCaSCzzFKtquCDFvogpfZaimX91QVfkIe/exec";
+  "https://script.google.com/macros/s/AKfycbyO1HJ0dokejC574nuUeMdPgQcrMAcrXXVpG6ZnLCT3SNAAyze6XYtlafqsXCEbyiE/exec";
 
 const HOUSES = ["Catalina", "Rincon", "Santa Rita", "Tortolita", "Tucson"];
 
@@ -2337,7 +2337,6 @@ function GloryTab() {
               <li key={i}>
                 <span className="pom-fame-to" style={{ color: color }}>⭐ {s.to}</span>
                 <span className="pom-fame-note">{reason}</span>
-                <span className="pom-fame-anon">— a secret admirer 🎭</span>
               </li>
             );
           })}
@@ -3302,7 +3301,6 @@ body::before {
 .pom-fame li:last-child { border-bottom: 0; }
 .pom-fame-to { font-weight: 800; font-size: 14px; }
 .pom-fame-note { color: var(--ink-soft); font-size: 13px; }
-.pom-fame-anon { color: var(--ink-soft); font-size: 11px; font-style: italic; opacity: 0.8; }
 .pom-fame-from { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
 
 .pom-draw-row { display: flex; flex-direction: column; gap: 10px; }
