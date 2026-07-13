@@ -38,7 +38,6 @@ const CHIEF_USERS = [
 // SAFETY NET ONLY. The live roster comes from the Google Sheet "Team" tab at load time.
 // Edit houses in the Team tab — no code push needed. This list is used only if that fetch fails.
 const FALLBACK_ROSTER = [
-const ROSTER = [
   { name: "Nate Walton", house: "Catalina", role: "Chief", email: "nathantwalton@arizona.edu" },
   { name: "Amrutha Doniparthi", house: "Rincon", role: "Chief", email: "amruthad39@arizona.edu" },
   { name: "Will Waidelich", house: "Santa Rita", role: "Chief", email: "wwaidelich@arizona.edu" },
