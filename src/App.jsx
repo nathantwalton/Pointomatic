@@ -14,7 +14,7 @@ const GOOGLE_EVIDENCE_FOLDER_URL = "https://drive.google.com/drive/folders/15zhX
 // Paste your deployed Google Apps Script Web App /exec URL here after deployment.
 const APPS_SCRIPT_WEB_APP_URL =
   (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_APPS_SCRIPT_WEB_APP_URL) ||
-  "https://script.google.com/macros/s/AKfycbzKpxc7mKXz3M5WGokHVSYjDWw5y4F_WALPY_71UWYKUFeULiatdmgclDQ5MVN8yVj_/exec";
+  "https://script.google.com/macros/s/AKfycbyO1HJ0dokejC574nuUeMdPgQcrMAcrXXVpG6ZnLCT3SNAAyze6XYtlafqsXCEbyiE/exec";
 
 const HOUSES = ["Catalina", "Rincon", "Santa Rita", "Tortolita", "Tucson"];
 
@@ -35,159 +35,160 @@ const CHIEF_USERS = [
   { name: "Johnny", password: "wootwoot1!" },
 ];
 
-// Current fallback roster. Future edits should live in the Google Sheet Team tab.
-const ROSTER = [
+// SAFETY NET ONLY. The live roster comes from the Google Sheet "Team" tab at load time.
+// Edit houses in the Team tab — no code push needed. This list is used only if that fetch fails.
+const FALLBACK_ROSTER = [
   { name: "Nate Walton", house: "Catalina", role: "Chief", email: "nathantwalton@arizona.edu" },
   { name: "Amrutha Doniparthi", house: "Rincon", role: "Chief", email: "amruthad39@arizona.edu" },
   { name: "Will Waidelich", house: "Santa Rita", role: "Chief", email: "wwaidelich@arizona.edu" },
   { name: "Johnny Trinh", house: "Tortolita", role: "Chief", email: "johnnyminhtrinh@arizona.edu" },
   { name: "Rosie Turk", house: "Tucson", role: "Chief", email: "rosemarieturk@arizona.edu" },
   { name: "Laura Meinke", house: "All", role: "Independent Adjudicator", lowestHouseCredit: true },
-  { name: "Mattia Walter", house: "Catalina", role: "PGY3", email: "mattiawalter@arizona.edu" },
-  { name: "David Hendrix", house: "Rincon", role: "PGY3", email: "hendrixd1@arizona.edu" },
-  { name: "Dwani Patel", house: "Santa Rita", role: "PGY3", email: "dwanip@arizona.edu" },
-  { name: "Monica Angeletti", house: "Tortolita", role: "PGY3", email: "monicaangeletti@arizona.edu" },
-  { name: "Jared Stillman", house: "Tucson", role: "PGY3", email: "jmstillman@arizona.edu" },
-  { name: "Celeste Gracey", house: "Catalina", role: "PGY3", email: "celestegracey@arizona.edu" },
-  { name: "Kellie Jeong", house: "Rincon", role: "PGY3", email: "kelliejeong@arizona.edu" },
-  { name: "Matthew Lansman", house: "Santa Rita", role: "PGY3", email: "mlansman@arizona.edu" },
-  { name: "Nicholas Genz", house: "Tortolita", role: "PGY3", email: "ngenz@arizona.edu" },
-  { name: "Swetha Vennelaganti", house: "Tucson", role: "PGY3", email: "svennelaganti@arizona.edu" },
-  { name: "Robert Sumner", house: "Catalina", role: "PGY3", email: "rsumner@arizona.edu" },
-  { name: "Costa Dalis", house: "Rincon", role: "PGY2", email: "cdalis@arizona.edu" },
-  { name: "Kaitlyn Baber", house: "Santa Rita", role: "PGY3", email: "kbaber@arizona.edu" },
-  { name: "Jesse Ritter", house: "Tortolita", role: "PGY3", email: "jritter@arizona.edu" },
-  { name: "Faith Kim", house: "Tucson", role: "PGY2", email: "faithkim@arizona.edu" },
-  { name: "Tim Yu", house: "Catalina", role: "PGY2", email: "timyu456@arizona.edu" },
-  { name: "Levi Cohen", house: "Rincon", role: "PGY1", email: "levicohen@arizona.edu" },
-  { name: "Kathryn Pulling", house: "Santa Rita", role: "PGY3", email: "kpulling@arizona.edu" },
-  { name: "Swathi Somisetty", house: "Tortolita", role: "PGY3", email: "swathisomisetty@arizona.edu" },
-  { name: "Ryan Schmidt", house: "Tucson", role: "PGY2", email: "ryanschmidt@arizona.edu" },
-  { name: "Justin Le", house: "Catalina", role: "PGY2", email: "justinle@arizona.edu" },
-  { name: "Dimitrios Filloglou", house: "Rincon", role: "PGY1", email: "dfilioglou98@arizona.edu" },
-  { name: "Adrianna Diviero", house: "Santa Rita", role: "PGY2", email: "adiviero@arizona.edu" },
-  { name: "Grace Speer", house: "Tortolita", role: "PGY2", email: "gracespeer@arizona.edu" },
-  { name: "Frederick Pan", house: "Tucson", role: "PGY1", email: "fredpan@arizona.edu" },
-  { name: "Isabella Campos Aguiar", house: "Catalina", role: "PGY1", email: "isabellacaguiar@arizona.edu" },
-  { name: "Shaik Firdhos", house: "Rincon", role: "PGY1", email: "firdhos@arizona.edu" },
-  { name: "Rami Khoshaba", house: "Santa Rita", role: "PGY1", email: "rkhoshaba@arizona.edu" },
-  { name: "Megan Kohn", house: "Tortolita", role: "PGY2", email: "mkohn3@arizona.edu" },
-  { name: "Emily Ploom", house: "Tucson", role: "PGY1", email: "emilyploom@arizona.edu" },
-  { name: "Alexander Candel", house: "Catalina", role: "PGY1", email: "acandel@arizona.edu" },
-  { name: "Alousius Fombang", house: "Rincon", role: "PGY1", email: "asfombang@arizona.edu" },
-  { name: "Henry Lang", house: "Santa Rita", role: "PGY1", email: "henrylang@arizona.edu" },
-  { name: "Kenneth Silvestro", house: "Tortolita", role: "PGY2", email: "kennysilvestro@arizona.edu" },
-  { name: "Cole Sander", house: "Tucson", role: "PGY1", email: "colesander@arizona.edu" },
-  { name: "Rishab Srivastava", house: "Catalina", role: "PGY3", email: "rishabsrivastava@arizona.edu" },
-  { name: "Nassim Idouraine", house: "Rincon", role: "PGY1", email: "nidouraine@arizona.edu" },
-  { name: "Bryce Little", house: "Santa Rita", role: "PGY1", email: "brycelittle@arizona.edu" },
-  { name: "Duy Nguyen", house: "Tortolita", role: "PGY1", email: "duymnguyen@arizona.edu" },
-  { name: "Arpan Sharma", house: "Tucson", role: "PGY1", email: "arpans44@arizona.edu" },
-  { name: "Faissal Stipho", house: "Catalina", role: "PGY3", email: "fstipho@arizona.edu" },
-  { name: "Kalvin Thomas", house: "Rincon", role: "PGY3", email: "kalvinethomas@arizona.edu" },
-  { name: "Ajdin Ekic", house: "Santa Rita", role: "PGY3", email: "aekic@arizona.edu" },
-  { name: "Mathew Thomas", house: "Tortolita", role: "PGY3", email: "matjthomas95@arizona.edu" },
-  { name: "Drew Rasmussen", house: "Tucson", role: "PGY3", email: "dnrasmussen@arizona.edu" },
-  { name: "Shenar Dinkha", house: "Catalina", role: "PGY3", email: "sdinkha@arizona.edu" },
-  { name: "Matthew Ward", house: "Rincon", role: "PGY3", email: "mbward@arizona.edu" },
-  { name: "Dustin Parsons", house: "Santa Rita", role: "PGY3", email: "dustinparsons@arizona.edu" },
-  { name: "Marlee Panther", house: "Tortolita", role: "PGY3", email: "marleepanther@arizona.edu" },
-  { name: "Danielle Bailey", house: "Tucson", role: "PGY3", email: "daniellebailey@arizona.edu" },
-  { name: "Asael Nunez", house: "Catalina", role: "PGY3", email: "asaelnunez@arizona.edu" },
-  { name: "William Matloff", house: "Rincon", role: "PGY3", email: "wmatloff@arizona.edu" },
-  { name: "Ricardo Reyes", house: "Santa Rita", role: "PGY2", email: "rreyes014@arizona.edu" },
-  { name: "Christian Avalos", house: "Tortolita", role: "PGY3", email: "avalosc@arizona.edu" },
-  { name: "Ryan Weyker", house: "Tucson", role: "PGY3", email: "rweyker@arizona.edu" },
-  { name: "Spencer Chee", house: "Catalina", role: "PGY2", email: "spencerchee@arizona.edu" },
-  { name: "Sydney Lovins", house: "Rincon", role: "PGY2", email: "sydneylovins@arizona.edu" },
-  { name: "Christopher Sallurday", house: "Santa Rita", role: "PGY2", email: "csallurday@arizona.edu" },
-  { name: "Eduardo Garcia Licerio", house: "Tortolita", role: "PGY3", email: "eduardogarcia@arizona.edu" },
-  { name: "Tammy Zamaitis", house: "Tucson", role: "PGY3", email: "tzamaitis@arizona.edu" },
-  { name: "Laura Tran", house: "Catalina", role: "PGY2", email: "lauratran@arizona.edu" },
-  { name: "Gowtham Anche", house: "Rincon", role: "PGY2", email: "gowthamanche@arizona.edu" },
-  { name: "Gagandeep Gill", house: "Santa Rita", role: "PGY2", email: "gagan@arizona.edu" },
-  { name: "Emily Tishkoff", house: "Tortolita", role: "PGY3", email: "emilytishkoff@arizona.edu" },
-  { name: "Mujtaba Shah", house: "Tucson", role: "PGY2", email: "mujtabashah@arizona.edu" },
-  { name: "Joy Eskandar", house: "Catalina", role: "PGY2", email: "eskandarj@arizona.edu" },
-  { name: "Andres Sanchez", house: "Rincon", role: "PGY2", email: "andresdsanchez@arizona.edu" },
-  { name: "Brett Martin", house: "Santa Rita", role: "PGY2", email: "bmartin13@arizona.edu" },
-  { name: "Tolulope Popoola", house: "Tortolita", role: "PGY3", email: "tpopoola@arizona.edu" },
-  { name: "Nellie Toliver", house: "Tucson", role: "PGY2", email: "nltoliver@arizona.edu" },
-  { name: "Emily Adamson", house: "Catalina", role: "PGY2", email: "eadamson@arizona.edu" },
-  { name: "Benjamin Maglajac", house: "Rincon", role: "PGY2", email: "maglajac@arizona.edu" },
-  { name: "Esther Cheng", house: "Santa Rita", role: "PGY2", email: "esthercheng@arizona.edu" },
-  { name: "Jessica Kitsen", house: "Tortolita", role: "PGY3", email: "jkitsen@arizona.edu" },
-  { name: "Rachel Rosow", house: "Tucson", role: "PGY2", email: "rrosow@arizona.edu" },
-  { name: "Ho Hyun Lee", house: "Catalina", role: "PGY1", email: "hohyunlee@arizona.edu" },
-  { name: "Srijit Paul", house: "Rincon", role: "PGY1", email: "srijitpaul@arizona.edu" },
-  { name: "Mohamad Al-Mula Hwaish", house: "Santa Rita", role: "PGY2", email: "mohamadakeel@arizona.edu" },
-  { name: "Noorhan Monther", house: "Tortolita", role: "PGY2", email: "nmonther@arizona.edu" },
-  { name: "Nina Maitra", house: "Tucson", role: "PGY2", email: "ninamaitra@arizona.edu" },
-  { name: "Suzette Lopez Valenzuela", house: "Catalina", role: "PGY1", email: "suzettelopez@arizona.edu" },
-  { name: "Alex Wang", house: "Rincon", role: "PGY1", email: "awang41@arizona.edu" },
-  { name: "Nicole Price", house: "Santa Rita", role: "PGY2", email: "nprice1@arizona.edu" },
-  { name: "Isaac Zarif", house: "Tortolita", role: "PGY1", email: "izarif@arizona.edu" },
-  { name: "Shawn Wang", house: "Tucson", role: "PGY2", email: "shawn5299@arizona.edu" },
-  { name: "Jesse Coy", house: "Catalina", role: "PGY1", email: "jessecoy@arizona.edu" },
-  { name: "Kent Lawrence", house: "Rincon", role: "PGY1", email: "alexlawrence@arizona.edu" },
-  { name: "Tyler Hill", house: "Santa Rita", role: "PGY1", email: "tylerhill@arizona.edu" },
-  { name: "Nandini Sodhi", house: "Tortolita", role: "PGY1", email: "nandinisodhi@arizona.edu" },
-  { name: "Ethan Renfrew", house: "Tucson", role: "PGY2", email: "ethanrenfrew@arizona.edu" },
+  { name: "Anthony Witten", house: "Catalina", role: "PD_APD" },
+  { name: "Bujji Ainapurapu", house: "Catalina", role: "PD_APD" },
+  { name: "Eric Brucks", house: "Rincon", role: "PD_APD" },
+  { name: "Joshua Malo", house: "Rincon", role: "PD_APD" },
+  { name: "Joao Paulo Ferreira", house: "Santa Rita", role: "PD_APD" },
+  { name: "Ryan Wong", house: "Santa Rita", role: "PD_APD" },
+  { name: "Dalia Mikhail", house: "Tortolita", role: "PD_APD" },
+  { name: "Rajesh Kotagiri", house: "Tortolita", role: "PD_APD" },
+  { name: "Amy Sussman", house: "Tucson", role: "PD_APD" },
+  { name: "Indu Partha", house: "Tucson", role: "PD_APD" },
+  { name: "Maria Longoria", house: "Catalina", role: "Program Staff" },
+  { name: "Jazmine Koli", house: "Rincon", role: "Program Staff" },
+  { name: "Elizabeth Cazesuz", house: "Santa Rita", role: "Program Staff" },
+  { name: "Keanna Encinas", house: "Tortolita", role: "Program Staff" },
+  { name: "Breanna Sherrow-Serrano", house: "Tucson", role: "Program Staff" },
+  { name: "Ajdin Ekic", house: "Catalina", role: "PGY3", email: "aekic@arizona.edu" },
   { name: "Cassandra Everly", house: "Catalina", role: "PGY3", email: "ceverly@arizona.edu" },
-  { name: "Myles Bosompem", house: "Rincon", role: "PGY1", email: "bosompem@arizona.edu" },
-  { name: "Mariah Black", house: "Santa Rita", role: "PGY1", email: "mariahblack@arizona.edu" },
-  { name: "Jasmine Coatley-Thomas", house: "Tortolita", role: "PGY1", email: "coatleythomas@arizona.edu" },
-  { name: "D'Andre Gomez", house: "Tucson", role: "PGY1", email: "dmgomez@arizona.edu" },
-  { name: "Adam Western", house: "Catalina", role: "PGY2", email: "awestern@arizona.edu" },
-  { name: "Sarah Busch", house: "Rincon", role: "PGY2", email: "sarahbusch@arizona.edu" },
-  { name: "Shreeya Agrawal", house: "Santa Rita", role: "PGY2", email: "shreeyaagrawal@arizona.edu" },
+  { name: "Celeste Gracey", house: "Catalina", role: "PGY3", email: "celestegracey@arizona.edu" },
+  { name: "Drew Rasmussen", house: "Catalina", role: "PGY3", email: "dnrasmussen@arizona.edu" },
+  { name: "Marlee Panther", house: "Catalina", role: "PGY3", email: "marleepanther@arizona.edu" },
+  { name: "Mathew Thomas", house: "Catalina", role: "PGY3", email: "matjthomas95@arizona.edu" },
+  { name: "Mattia Walter", house: "Catalina", role: "PGY3", email: "mattiawalter@arizona.edu" },
+  { name: "Robert Sumner", house: "Catalina", role: "PGY3", email: "rsumner@arizona.edu" },
+  { name: "Christian Avalos", house: "Rincon", role: "PGY3", email: "avalosc@arizona.edu" },
+  { name: "Danielle Bailey", house: "Rincon", role: "PGY3", email: "daniellebailey@arizona.edu" },
+  { name: "David Hendrix", house: "Rincon", role: "PGY3", email: "hendrixd1@arizona.edu" },
+  { name: "Dustin Parsons", house: "Rincon", role: "PGY3", email: "dustinparsons@arizona.edu" },
+  { name: "Kalvin Thomas", house: "Rincon", role: "PGY3", email: "kalvinethomas@arizona.edu" },
+  { name: "Kellie Jeong", house: "Rincon", role: "PGY3", email: "kelliejeong@arizona.edu" },
+  { name: "Matthew Ward", house: "Rincon", role: "PGY3", email: "mbward@arizona.edu" },
+  { name: "Dwani Patel", house: "Santa Rita", role: "PGY3", email: "dwanip@arizona.edu" },
+  { name: "Eduardo Garcia Licerio", house: "Santa Rita", role: "PGY3", email: "eduardogarcia@arizona.edu" },
+  { name: "Emily Tishkoff", house: "Santa Rita", role: "PGY3", email: "emilytishkoff@arizona.edu" },
+  { name: "Kaitlyn Baber", house: "Santa Rita", role: "PGY3", email: "kbaber@arizona.edu" },
+  { name: "Kathryn Pulling", house: "Santa Rita", role: "PGY3", email: "kpulling@arizona.edu" },
+  { name: "Matthew Lansman", house: "Santa Rita", role: "PGY3", email: "mlansman@arizona.edu" },
+  { name: "Ryan Weyker", house: "Santa Rita", role: "PGY3", email: "rweyker@arizona.edu" },
+  { name: "Faissal Stipho", house: "Tortolita", role: "PGY3", email: "fstipho@arizona.edu" },
   { name: "Jackie Maltagliati", house: "Tortolita", role: "PGY3", email: "jackiehu@arizona.edu" },
+  { name: "Jesse Ritter", house: "Tortolita", role: "PGY3", email: "jritter@arizona.edu" },
+  { name: "Monica Angeletti", house: "Tortolita", role: "PGY3", email: "monicaangeletti@arizona.edu" },
+  { name: "Nicholas Genz", house: "Tortolita", role: "PGY3", email: "ngenz@arizona.edu" },
+  { name: "Rishab Srivastava", house: "Tortolita", role: "PGY3", email: "rishabsrivastava@arizona.edu" },
+  { name: "Swathi Somisetty", house: "Tortolita", role: "PGY3", email: "swathisomisetty@arizona.edu" },
+  { name: "Tammy Zamaitis", house: "Tortolita", role: "PGY3", email: "tzamaitis@arizona.edu" },
+  { name: "Tolulope Popoola", house: "Tortolita", role: "PGY3", email: "tpopoola@arizona.edu" },
+  { name: "Asael Nunez", house: "Tucson", role: "PGY3", email: "asaelnunez@arizona.edu" },
+  { name: "Jared Stillman", house: "Tucson", role: "PGY3", email: "jmstillman@arizona.edu" },
+  { name: "Jessica Kitsen", house: "Tucson", role: "PGY3", email: "jkitsen@arizona.edu" },
   { name: "Nathan Giauque", house: "Tucson", role: "PGY3", email: "ngiauque@arizona.edu" },
-  { name: "Basem Al-Tarshan", house: "Catalina", role: "PGY1", email: "baltarshan@arizona.edu" },
+  { name: "Shenar Dinkha", house: "Tucson", role: "PGY3", email: "sdinkha@arizona.edu" },
+  { name: "Swetha Vennelaganti", house: "Tucson", role: "PGY3", email: "svennelaganti@arizona.edu" },
+  { name: "William Matloff", house: "Tucson", role: "PGY3", email: "wmatloff@arizona.edu" },
+  { name: "Adam Western", house: "Catalina", role: "PGY2", email: "awestern@arizona.edu" },
+  { name: "Justin Le", house: "Catalina", role: "PGY2", email: "justinle@arizona.edu" },
+  { name: "Laura Tran", house: "Catalina", role: "PGY2", email: "lauratran@arizona.edu" },
+  { name: "Mujtaba Shah", house: "Catalina", role: "PGY2", email: "mujtabashah@arizona.edu" },
+  { name: "Spencer Chee", house: "Catalina", role: "PGY2", email: "spencerchee@arizona.edu" },
+  { name: "Sydney Lovins", house: "Catalina", role: "PGY2", email: "sydneylovins@arizona.edu" },
+  { name: "Tim Yu", house: "Catalina", role: "PGY2", email: "timyu456@arizona.edu" },
+  { name: "Costa Dalis", house: "Rincon", role: "PGY2", email: "cdalis@arizona.edu" },
+  { name: "Joy Eskandar", house: "Rincon", role: "PGY2", email: "eskandarj@arizona.edu" },
   { name: "Michael Palomares", house: "Rincon", role: "PGY2", email: "mpalomares@arizona.edu" },
+  { name: "Nellie Toliver", house: "Rincon", role: "PGY2", email: "nltoliver@arizona.edu" },
+  { name: "Noorhan Monther", house: "Rincon", role: "PGY2", email: "nmonther@arizona.edu" },
+  { name: "Ricardo Reyes", house: "Rincon", role: "PGY2", email: "rreyes014@arizona.edu" },
+  { name: "Sarah Busch", house: "Rincon", role: "PGY2", email: "sarahbusch@arizona.edu" },
+  { name: "Adrianna Diviero", house: "Santa Rita", role: "PGY2", email: "adiviero@arizona.edu" },
+  { name: "Christopher Sallurday", house: "Santa Rita", role: "PGY2", email: "csallurday@arizona.edu" },
+  { name: "Emily Adamson", house: "Santa Rita", role: "PGY2", email: "eadamson@arizona.edu" },
+  { name: "Gowtham Anche", house: "Santa Rita", role: "PGY2", email: "gowthamanche@arizona.edu" },
   { name: "Luca Bertozzi", house: "Santa Rita", role: "PGY2", email: "labertozzi@arizona.edu" },
+  { name: "Rachel Rosow", house: "Santa Rita", role: "PGY2", email: "rrosow@arizona.edu" },
+  { name: "Shreeya Agrawal", house: "Santa Rita", role: "PGY2", email: "shreeyaagrawal@arizona.edu" },
+  { name: "Andres Sanchez", house: "Tortolita", role: "PGY2", email: "andresdsanchez@arizona.edu" },
+  { name: "Brett Martin", house: "Tortolita", role: "PGY2", email: "bmartin13@arizona.edu" },
+  { name: "Gagandeep Gill", house: "Tortolita", role: "PGY2", email: "gagan@arizona.edu" },
+  { name: "Grace Speer", house: "Tortolita", role: "PGY2", email: "gracespeer@arizona.edu" },
   { name: "Hyun Kim", house: "Tortolita", role: "PGY2", email: "kihyun@arizona.edu" },
+  { name: "Kenneth Silvestro", house: "Tortolita", role: "PGY2", email: "kennysilvestro@arizona.edu" },
+  { name: "Megan Kohn", house: "Tortolita", role: "PGY2", email: "mkohn3@arizona.edu" },
+  { name: "Nina Maitra", house: "Tortolita", role: "PGY2", email: "ninamaitra@arizona.edu" },
+  { name: "Benjamin Maglajac", house: "Tucson", role: "PGY2", email: "maglajac@arizona.edu" },
+  { name: "Esther Cheng", house: "Tucson", role: "PGY2", email: "esthercheng@arizona.edu" },
+  { name: "Ethan Renfrew", house: "Tucson", role: "PGY2", email: "ethanrenfrew@arizona.edu" },
+  { name: "Faith Kim", house: "Tucson", role: "PGY2", email: "faithkim@arizona.edu" },
   { name: "Khaja Siddiqui", house: "Tucson", role: "PGY2", email: "ksiddiqui@arizona.edu" },
-  { name: "Sara Castaneda", house: "Catalina", role: "PGY1", email: "saravalencia@arizona.edu" },
-  { name: "Jason Chen", house: "Rincon", role: "PGY1", email: "jasonlchen@arizona.edu" },
-  { name: "Joey Ghotmi", house: "Santa Rita", role: "PGY1", email: "joeyghotmi@arizona.edu" },
-  { name: "Angela Monetathchi", house: "Tortolita", role: "PGY1", email: "amonetathchi@arizona.edu" },
-  { name: "Brielle Tobin", house: "Tucson", role: "PGY1", email: "brielletobin@arizona.edu" },
+  { name: "Mohamad Al-Mula Hwaish", house: "Tucson", role: "PGY2", email: "mohamadakeel@arizona.edu" },
+  { name: "Nicole Price", house: "Tucson", role: "PGY2", email: "nprice1@arizona.edu" },
+  { name: "Ryan Schmidt", house: "Tucson", role: "PGY2", email: "ryanschmidt@arizona.edu" },
+  { name: "Shawn Wang", house: "Tucson", role: "PGY2", email: "shawn5299@arizona.edu" },
+  { name: "Alexander Candel", house: "Catalina", role: "PGY1", email: "acandel@arizona.edu" },
   { name: "Amanda Gong", house: "Catalina", role: "PGY1", email: "agong3@arizona.edu" },
-  { name: "Soojung Choi", house: "Rincon", role: "PGY1", email: "soojungchoi@arizona.edu" },
-  { name: "Kassandra Mastras", house: "Santa Rita", role: "PGY1", email: "kmastras@arizona.edu" },
-  { name: "Joshua Nay", house: "Tortolita", role: "PGY1", email: "jnay@arizona.edu" },
-  { name: "Shana Zadron", house: "Tucson", role: "PGY1", email: "shanazadron@arizona.edu" },
+  { name: "Basem Al-Tarshan", house: "Catalina", role: "PGY1", email: "baltarshan@arizona.edu" },
+  { name: "Isabella Campos Aguiar", house: "Catalina", role: "PGY1", email: "isabellacaguiar@arizona.edu" },
+  { name: "Jasmine Coatley-Thomas", house: "Catalina", role: "PGY1", email: "coatleythomas@arizona.edu" },
+  { name: "Mariah Black", house: "Catalina", role: "PGY1", email: "mariahblack@arizona.edu" },
+  { name: "Myles Bosompem", house: "Catalina", role: "PGY1", email: "bosompem@arizona.edu" },
   { name: "Paige Awtrey", house: "Catalina", role: "PGY1", email: "pawtrey@arizona.edu" },
+  { name: "Sara Castaneda", house: "Catalina", role: "PGY1", email: "saravalencia@arizona.edu" },
+  { name: "Alousius Fombang", house: "Rincon", role: "PGY1", email: "asfombang@arizona.edu" },
+  { name: "D'Andre Gomez", house: "Rincon", role: "PGY1", email: "dmgomez@arizona.edu" },
+  { name: "Dimitrios Filloglou", house: "Rincon", role: "PGY1", email: "dfilioglou98@arizona.edu" },
+  { name: "Jason Chen", house: "Rincon", role: "PGY1", email: "jasonlchen@arizona.edu" },
+  { name: "Jesse Coy", house: "Rincon", role: "PGY1", email: "jessecoy@arizona.edu" },
+  { name: "Levi Cohen", house: "Rincon", role: "PGY1", email: "levicohen@arizona.edu" },
   { name: "Milan Hirpara", house: "Rincon", role: "PGY1", email: "milhirpara@arizona.edu" },
-  { name: "Francine Holguin", house: "Santa Rita", role: "PGY1", email: "frholguin@arizona.edu" },
-  { name: "Jocelyn Liu", house: "Tortolita", role: "PGY1", email: "jocelynliu@arizona.edu" },
-  { name: "Isam Allanouf", house: "Tucson", role: "PGY1", email: "isamalannouf@arizona.edu" },
-  { name: "Riley Huffman", house: "Catalina", role: "Resident" },
+  { name: "Nassim Idouraine", house: "Rincon", role: "PGY1", email: "nidouraine@arizona.edu" },
   { name: "Ryan Hakim", house: "Rincon", role: "PGY1", email: "ryanhakim@arizona.edu" },
+  { name: "Shaik Firdhos", house: "Rincon", role: "PGY1", email: "firdhos@arizona.edu" },
+  { name: "Soojung Choi", house: "Rincon", role: "PGY1", email: "soojungchoi@arizona.edu" },
+  { name: "Bryce Little", house: "Santa Rita", role: "PGY1", email: "brycelittle@arizona.edu" },
+  { name: "Francine Holguin", house: "Santa Rita", role: "PGY1", email: "frholguin@arizona.edu" },
+  { name: "Henry Lang", house: "Santa Rita", role: "PGY1", email: "henrylang@arizona.edu" },
+  { name: "Ho Hyun Lee", house: "Santa Rita", role: "PGY1", email: "hohyunlee@arizona.edu" },
+  { name: "Joey Ghotmi", house: "Santa Rita", role: "PGY1", email: "joeyghotmi@arizona.edu" },
+  { name: "Kassandra Mastras", house: "Santa Rita", role: "PGY1", email: "kmastras@arizona.edu" },
+  { name: "Kent Lawrence", house: "Santa Rita", role: "PGY1", email: "alexlawrence@arizona.edu" },
   { name: "Rambod Meshgi", house: "Santa Rita", role: "PGY1", email: "rmeshgi@arizona.edu" },
+  { name: "Rami Khoshaba", house: "Santa Rita", role: "PGY1", email: "rkhoshaba@arizona.edu" },
+  { name: "Suzette Lopez Valenzuela", house: "Santa Rita", role: "PGY1", email: "suzettelopez@arizona.edu" },
+  { name: "Tyler Hill", house: "Santa Rita", role: "PGY1", email: "tylerhill@arizona.edu" },
+  { name: "Alex Wang", house: "Tortolita", role: "PGY1", email: "awang41@arizona.edu" },
+  { name: "Angela Monetathchi", house: "Tortolita", role: "PGY1", email: "amonetathchi@arizona.edu" },
+  { name: "Duy Nguyen", house: "Tortolita", role: "PGY1", email: "duymnguyen@arizona.edu" },
+  { name: "Jocelyn Liu", house: "Tortolita", role: "PGY1", email: "jocelynliu@arizona.edu" },
+  { name: "Joshua Nay", house: "Tortolita", role: "PGY1", email: "jnay@arizona.edu" },
+  { name: "Nandini Sodhi", house: "Tortolita", role: "PGY1", email: "nandinisodhi@arizona.edu" },
   { name: "Ryan Waggoner", house: "Tortolita", role: "PGY1", email: "rwaggoner@arizona.edu" },
+  { name: "Srijit Paul", house: "Tortolita", role: "PGY1", email: "srijitpaul@arizona.edu" },
+  { name: "Arpan Sharma", house: "Tucson", role: "PGY1", email: "arpans44@arizona.edu" },
+  { name: "Brielle Tobin", house: "Tucson", role: "PGY1", email: "brielletobin@arizona.edu" },
+  { name: "Cole Sander", house: "Tucson", role: "PGY1", email: "colesander@arizona.edu" },
+  { name: "Emily Ploom", house: "Tucson", role: "PGY1", email: "emilyploom@arizona.edu" },
+  { name: "Frederick Pan", house: "Tucson", role: "PGY1", email: "fredpan@arizona.edu" },
+  { name: "Isaac Zarif", house: "Tucson", role: "PGY1", email: "izarif@arizona.edu" },
+  { name: "Isam Allanouf", house: "Tucson", role: "PGY1", email: "isamalannouf@arizona.edu" },
   { name: "Laura Zelis", house: "Tucson", role: "PGY1" },
+  { name: "Shana Zadron", house: "Tucson", role: "PGY1", email: "shanazadron@arizona.edu" },
+  { name: "Riley Huffman", house: "Catalina", role: "Resident" },
   { name: "Samuel Stewart", house: "Catalina", role: "Resident" },
   { name: "Alexander Kim", house: "Rincon", role: "Resident" },
   { name: "Lucas Lane", house: "Santa Rita", role: "Resident" },
   { name: "Christina Lim", house: "Tortolita", role: "Resident" },
   { name: "Estevan Sandoval", house: "Tucson", role: "Resident" },
-  { name: "Anthony Witten", house: "Catalina", role: "PD_APD" },
-  { name: "Eric Brucks", house: "Rincon", role: "PD_APD" },
-  { name: "Joao Paulo Ferreira", house: "Santa Rita", role: "PD_APD" },
-  { name: "Rajesh Kotagiri", house: "Tortolita", role: "PD_APD" },
-  { name: "Indu Partha", house: "Tucson", role: "PD_APD" },
-  { name: "Bujji Ainapurapu", house: "Catalina", role: "PD_APD" },
-  { name: "Joshua Malo", house: "Rincon", role: "PD_APD" },
-  { name: "Ryan Wong", house: "Santa Rita", role: "PD_APD" },
-  { name: "Dalia Mikhail", house: "Tortolita", role: "PD_APD" },
-  { name: "Amy Sussman", house: "Tucson", role: "PD_APD" },
-  { name: "Maria Longoria", house: "Catalina", role: "Program Staff" },
-  { name: "Jazmine Koli", house: "Rincon", role: "Program Staff" },
-  { name: "Elizabeth Cazesuz", house: "Santa Rita", role: "Program Staff" },
-  { name: "Keanna Encinas", house: "Tortolita", role: "Program Staff" },
-  { name: "Breanna Sherrow-Serrano", house: "Tucson", role: "Program Staff" }
 ];
 
 /* ------------------------- Activities ------------------------- */
@@ -1471,6 +1472,23 @@ const AWARD_PRESETS = ["Trivia W", "Kahoot crown", "Event MVP", "Chief's whim"];
 
 /* ------------------------- Helpers ------------------------- */
 
+// LIVE_ROSTER is replaced at startup by the Team tab. Falls back to the baked-in list
+// if the Sheet is unreachable, so residents can always submit.
+let LIVE_ROSTER = FALLBACK_ROSTER;
+
+function getRoster() { return LIVE_ROSTER; }
+
+// Guarded: only accept a Team tab that actually looks like a roster.
+function applyLiveRoster(rows) {
+  if (!Array.isArray(rows)) return false;
+  const clean = rows.filter(function ok(r) { return r && r.name && r.house; });
+  if (clean.length < 20) return false;         // empty/broken tab -> keep the fallback
+  const houses = new Set(clean.map(function h(r) { return r.house; }));
+  if (!HOUSES.some(function known(h) { return houses.has(h); })) return false;
+  LIVE_ROSTER = clean;
+  return true;
+}
+
 function normalizeName(value) {
   return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
@@ -1478,8 +1496,9 @@ function normalizeName(value) {
 function findRosterPerson(name) {
   const target = normalizeName(name);
   if (!target) return null;
-  for (let i = 0; i < ROSTER.length; i += 1) {
-    if (normalizeName(ROSTER[i].name) === target) return ROSTER[i];
+  const roster = getRoster();
+  for (let i = 0; i < roster.length; i += 1) {
+    if (normalizeName(roster[i].name) === target) return roster[i];
   }
   return null;
 }
@@ -1730,7 +1749,7 @@ function PersonChip(props) {
 function RosterDatalist() {
   return (
     <datalist id="pom-roster">
-      {ROSTER.map(function opt(p) { return <option key={p.name} value={p.name} />; })}
+      {getRoster().map(function opt(p) { return <option key={p.name} value={p.name} />; })}
     </datalist>
   );
 }
@@ -3427,6 +3446,7 @@ export default function PointOMatic() {
   const [challenges, setChallenges] = useState(FALLBACK_CHALLENGES);
   const [monsoon, setMonsoon] = useState(null);
   const [announcement, setAnnouncement] = useState(null);
+  const [rosterRev, setRosterRev] = useState(0); // bumps when the Team tab roster loads
 
   function applySummary(json) {
     if (json && json.challenges) {
@@ -3438,6 +3458,11 @@ export default function PointOMatic() {
     }
     if (json && json.monsoon) setMonsoon(json.monsoon);
     if (json && json.announcement) setAnnouncement(json.announcement);
+    // Live roster from the Google Sheet "Team" tab. Rejected if it doesn't look
+    // like a real roster, in which case the built-in fallback stays in place.
+    if (json && json.roster && applyLiveRoster(json.roster)) {
+      setRosterRev(function bump(v) { return v + 1; });
+    }
   }
 
   function reloadLiveChallenges() {
@@ -3453,7 +3478,7 @@ export default function PointOMatic() {
   return (
     <div className="pom-shell">
       <PomStyles />
-      <RosterDatalist />
+      <RosterDatalist key={rosterRev} />
       <header className="pom-header">
         <button
           type="button"
