@@ -14,7 +14,7 @@ const GOOGLE_EVIDENCE_FOLDER_URL = "https://drive.google.com/drive/folders/15zhX
 // Paste your deployed Google Apps Script Web App /exec URL here after deployment.
 const APPS_SCRIPT_WEB_APP_URL =
   (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_APPS_SCRIPT_WEB_APP_URL) ||
-  "https://script.google.com/macros/s/AKfycbyO1HJ0dokejC574nuUeMdPgQcrMAcrXXVpG6ZnLCT3SNAAyze6XYtlafqsXCEbyiE/exec";
+  "https://script.google.com/macros/s/AKfycbzKpxc7mKXz3M5WGokHVSYjDWw5y4F_WALPY_71UWYKUFeULiatdmgclDQ5MVN8yVj_/exec";
 
 // Public CSV export of the canonical Team tab. Loading this directly keeps roster
 // changes independent of the Apps Script deployment used for points and standings.
@@ -1721,15 +1721,34 @@ async function fetchSummary(period, userName) {
   const params = new URLSearchParams({ action: "summary" });
   if (period) params.set("period", period);
   if (userName) params.set("user", userName);
-  // Cache-bust the Apps Script summary so quest changes from Chief Lair show up
-  // immediately on resident devices instead of waiting for browser/proxy cache.
-  params.set("_", String(Date.now()));
-  const res = await fetch(APPS_SCRIPT_WEB_APP_URL + "?" + params.toString(), {
-    method: "GET",
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error("Summary request failed: " + res.status);
-  return res.json();
+  let lastError = null;
+
+  // Apps Script occasionally cold-starts or times out. Retry readable GETs, but
+  // never accept its generic "backend alive" response as an empty leaderboard.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    params.set("_", String(Date.now()) + "-" + attempt);
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = controller ? window.setTimeout(function abortSlowSummary() { controller.abort(); }, 12000) : null;
+    try {
+      const res = await fetch(APPS_SCRIPT_WEB_APP_URL + "?" + params.toString(), {
+        method: "GET",
+        cache: "no-store",
+        signal: controller ? controller.signal : undefined,
+      });
+      if (!res.ok) throw new Error("Summary request failed: " + res.status);
+      const json = await res.json();
+      if (!json || !json.houseTotals || typeof json.houseTotals !== "object") {
+        throw new Error("Backend response did not include house totals");
+      }
+      return json;
+    } catch (err) {
+      lastError = err;
+      if (attempt < 2) await new Promise(function pause(resolve) { window.setTimeout(resolve, 500 * (attempt + 1)); });
+    } finally {
+      if (timer) window.clearTimeout(timer);
+    }
+  }
+  throw lastError || new Error("Summary request failed");
 }
 
 // Chief draws (raffle, Gila Monster) use readable GETs so the result can be shown live.
@@ -2024,6 +2043,15 @@ function EarnTab(props) {
 
   return (
     <div className="pom-earn">
+      {props.challengeSync === "loading" && (
+        <div className="pom-sync-banner" role="status">⏳ Syncing the live wellness and photo quests…</div>
+      )}
+      {props.challengeSync === "error" && (
+        <div className="pom-sync-banner error" role="alert">
+          <span>⚠️ Live quests did not sync; the cards below are backups.</span>
+          <button type="button" className="pom-sync-btn" onClick={props.onRetryChallenges}>Retry</button>
+        </div>
+      )}
       {monsoon && (
         <div className="pom-monsoon">
           🌧️ MONSOON WEEK — House {monsoon.house} earns <strong>DOUBLE points</strong>{monsoon.endDate ? " through " + monsoon.endDate : ""}. Make it rain.
@@ -3383,6 +3411,16 @@ body::before {
   background: linear-gradient(92deg, #364FC7, #1971C2); color: #fff; border-radius: 16px;
   padding: 12px 16px; font-weight: 700; font-size: 14px; margin-bottom: 14px; text-align: center;
 }
+.pom-sync-banner {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: #E7F5FF; color: #1864AB; border: 2px solid #74C0FC; border-radius: 14px;
+  padding: 10px 14px; font-weight: 700; font-size: 13px; margin-bottom: 14px; text-align: center;
+}
+.pom-sync-banner.error { background: #FFF3BF; color: #8A5B00; border-color: #FCC419; }
+.pom-sync-btn {
+  border: 2px solid currentColor; border-radius: 999px; background: #fff; color: inherit;
+  padding: 5px 11px; font: inherit; font-size: 12px; cursor: pointer;
+}
 .pom-bounty-banner {
   background: linear-gradient(92deg, #E8590C, #C2255C); color: #fff; border-radius: 16px;
   padding: 12px 16px; font-weight: 700; font-size: 14px; margin-bottom: 14px; text-align: center;
@@ -3542,6 +3580,7 @@ export default function PointOMatic() {
     document.body.setAttribute("data-pom-theme", theme);
   }, [theme]);
   const [challenges, setChallenges] = useState(FALLBACK_CHALLENGES);
+  const [challengeSync, setChallengeSync] = useState("loading");
   const [monsoon, setMonsoon] = useState(null);
   const [announcement, setAnnouncement] = useState(null);
   const [rosterRev, setRosterRev] = useState(0); // bumps when the Team tab roster loads
@@ -3559,9 +3598,14 @@ export default function PointOMatic() {
   }
 
   function reloadLiveChallenges() {
+    setChallengeSync("loading");
     fetchSummary()
-      .then(function ok(json) { applySummary(json); })
-      .catch(function quiet() { /* fallback quests stay up */ });
+      .then(function ok(json) {
+        if (!json.challenges) throw new Error("Summary did not include live challenges");
+        applySummary(json);
+        setChallengeSync("ready");
+      })
+      .catch(function failed() { setChallengeSync("error"); });
   }
 
   useEffect(function loadChallenges() {
@@ -3615,7 +3659,7 @@ export default function PointOMatic() {
         </div>
       )}
 
-      {tab === "earn" && <EarnTab challenges={challenges} monsoon={monsoon} />}
+      {tab === "earn" && <EarnTab challenges={challenges} monsoon={monsoon} challengeSync={challengeSync} onRetryChallenges={reloadLiveChallenges} />}
       {tab === "glory" && <GloryTab />}
       {tab === "chiefs" && <ChiefTab onQuestSaved={function localQuestSaved(type, quest) {
         setChallenges(function previous(current) {
